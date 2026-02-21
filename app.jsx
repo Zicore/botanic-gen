@@ -1059,6 +1059,25 @@ export default function App() {
         </div>
       )}
 
+      {/* MOUNTAIN GEN LINK */}
+      <a
+        href="https://zicore.github.io/mountain-gen/"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="absolute top-4 left-4 z-20 flex items-center gap-2.5 bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-xl px-3.5 py-2.5 shadow-lg hover:bg-slate-800/90 hover:border-sky-500/30 transition-all group"
+      >
+        <svg width="22" height="22" viewBox="0 0 32 32" className="shrink-0">
+          <circle cx="16" cy="16" r="14" fill="none" stroke="#38bdf8" strokeWidth="1.5" opacity="0.3"/>
+          <path d="M6 26 L16 8 L26 26 Z" fill="none" stroke="#38bdf8" strokeWidth="1.5" strokeLinejoin="round" opacity="0.7"/>
+          <path d="M11 26 L18 16 L25 26" fill="none" stroke="#7dd3fc" strokeWidth="1.2" strokeLinejoin="round" opacity="0.4"/>
+          <path d="M14 12 L16 8 L18 12" fill="#38bdf8" opacity="0.5"/>
+        </svg>
+        <div className="flex flex-col">
+          <span className="text-xs font-bold text-white group-hover:text-sky-300 transition-colors">Mountain Gen</span>
+          <span className="text-[10px] text-slate-500">Terrain Generator</span>
+        </div>
+      </a>
+
       {scriptsLoaded && (
         <div className="absolute top-6 right-6 w-80 max-h-[calc(100vh-5.5rem)] overflow-y-auto bg-gray-900/80 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl custom-scrollbar flex flex-col">
           
