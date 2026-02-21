@@ -1060,7 +1060,7 @@ export default function App() {
       )}
 
       {scriptsLoaded && (
-        <div className="absolute top-6 right-6 w-80 max-h-[calc(100vh-3rem)] overflow-y-auto bg-gray-900/80 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl custom-scrollbar flex flex-col">
+        <div className="absolute top-6 right-6 w-80 max-h-[calc(100vh-5.5rem)] overflow-y-auto bg-gray-900/80 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl custom-scrollbar flex flex-col">
           
           <div className="sticky top-0 z-10 bg-gray-900 rounded-t-2xl">
             <div className="p-5 pb-3 border-b border-white/10 flex items-center gap-3">
