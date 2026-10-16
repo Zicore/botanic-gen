@@ -45,7 +45,7 @@ export class Viewer {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 0.8;
+    this.renderer.toneMappingExposure = 0.9;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     container.appendChild(this.renderer.domElement);
 
@@ -120,9 +120,9 @@ export class Viewer {
     for (let i = 0; i < size * size; i++) {
       const n = rnd();
       const g = 0.75 + n * 0.35;
-      img.data[i * 4] = 74 * g;
-      img.data[i * 4 + 1] = 80 * g;
-      img.data[i * 4 + 2] = 42 * g;
+      img.data[i * 4] = 86 * g;
+      img.data[i * 4 + 1] = 92 * g;
+      img.data[i * 4 + 2] = 50 * g;
       img.data[i * 4 + 3] = 255;
     }
     ctx.putImageData(img, 0, 0);
@@ -179,10 +179,11 @@ export class Viewer {
     if (this.envRT) this.envRT.dispose();
     this.envRT = rt;
     this.scene.environment = rt.texture;
-    this.scene.environmentIntensity = 0.5;
+    // the physical sky is HDR and very bright: keep its irradiance in proportion to the sun
+    this.scene.environmentIntensity = 0.16;
     const warm = THREE.MathUtils.clamp(elevationDeg / 40, 0, 1);
     this.sun.color.setRGB(1, 0.78 + 0.18 * warm, 0.6 + 0.3 * warm);
-    this.sun.intensity = 1.0 + 1.6 * THREE.MathUtils.clamp(elevationDeg / 25, 0, 1);
+    this.sun.intensity = 1.0 + 1.8 * THREE.MathUtils.clamp(elevationDeg / 25, 0, 1);
   }
 
   updateSunPosition() {

@@ -324,7 +324,7 @@ export const MATERIAL_TYPES = {
             { value: 'fibrous', label: 'Fibrous (palm, cedar)' },
           ]),
           i('seed', 'Seed', 3, 0, 9999),
-          f('scale', 'Pattern scale', 5, 1, 16, 0.1),
+          f('scale', 'Pattern scale', 5, 1, 40, 0.1),
           f('stretch', 'Vertical stretch', 3, 1, 8, 0.05),
           f('depth', 'Crack depth', 0.7, 0, 1),
           f('crackWidth', 'Crack width', 0.35, 0, 1),

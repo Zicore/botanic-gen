@@ -11,11 +11,45 @@ const DATA_FRAG = /* glsl */ `
 ${GLSL_NOISE}
 uniform uint uSeed;
 uniform ivec2 uPeriod;
-uniform float uDepth, uCrackWidth, uWarp, uDetail, uRings;
+uniform float uDepth, uCrackWidth, uWarp, uDetail, uRings, uAspect;
 
 struct Bark { float h; float crack; float cell; float patchy; };
 
-#if STYLE == 0 || STYLE == 1 || STYLE == 3
+// period with square cells in world space (the tile is uAspect times taller than wide)
+ivec2 isoPeriod(int k) { return ivec2(k, max(1, int(float(k) * uAspect + 0.5))); }
+
+#if STYLE == 0
+// Oak / ash: long braided vertical ridges, deep fissures, ridges broken into blocks.
+// Fissures are the zero-isolines of a vertically stretched noise field: long meandering lines
+// that approach and part again, which reads as the braided network of real oak bark.
+Bark bark_braided(vec2 uv, ivec2 P) {
+  float wx = pfbm(uv, ivec2(max(2, P.x / 2), max(2, P.y * 2)), 3, uSeed + 11U);
+  vec2 p = uv + vec2(wx * uWarp * 0.9 / float(P.x), 0.0);
+  float w = mix(0.025, 0.13, uCrackWidth);
+  float n1 = pfbm(p, P, 4, uSeed);
+  float n2 = pfbm(p + vec2(0.37, 0.11), ivec2(max(1, P.x / 2), max(1, P.y / 2)), 4, uSeed + 7U);
+  float f1 = 1.0 - smoothstep(w * 0.55, w, abs(n1));
+  float f2 = 1.0 - smoothstep(w * 0.45, w * 0.8, abs(n2));
+  float fissure = max(f1, f2 * 0.85);
+  // rounded ridge shoulders: height grows with distance from the nearest fissure line
+  float shoulder = smoothstep(w, w * 3.2, min(abs(n1), abs(n2) * 1.4));
+  // short horizontal breaks: zero-isolines of a horizontally stretched field, only on some ridges
+  float m = pfbm(p, ivec2(max(1, P.x / 3), P.y * 7), 3, uSeed + 5U);
+  float seg = smoothstep(0.0, 0.25, pnoise(p * vec2(float(P.x), float(P.y * 3)), ivec2(P.x, P.y * 3), uSeed + 9U));
+  float hb = (1.0 - smoothstep(0.02, 0.06, abs(m))) * seg;
+  // crumbly, isotropic surface detail
+  float crumb = pfbm(uv, isoPeriod(P.x * 3), 4, uSeed + 77U);
+  float flake = pfbm(uv, isoPeriod(P.x * 9), 3, uSeed + 78U);
+  float top = 0.56 + 0.22 * shoulder + 0.1 * m + crumb * 0.18 * uDetail + flake * 0.09 * uDetail;
+  top *= 1.0 - 0.5 * hb * uDepth;
+  float floorH = (1.0 - uDepth) * 0.5 + 0.06 * crumb;
+  float h = mix(top, floorH, fissure);
+  float lichen = smoothstep(0.3, 0.6, pfbm(uv, isoPeriod(5), 5, uSeed + 81U)) * smoothstep(0.4, 0.8, flake * 0.5 + 0.5);
+  return Bark(clamp(h, 0.0, 1.0), max(fissure, hb * 0.6), 0.5 + 0.5 * m, lichen * (1.0 - fissure));
+}
+#endif
+
+#if STYLE == 1 || STYLE == 3
 Bark bark_furrowed(vec2 uv, ivec2 P, float flaky) {
   vec2 w = vec2(pfbm(uv, ivec2(3, 2), 4, uSeed + 11U), pfbm(uv, ivec2(3, 2), 4, uSeed + 37U));
   vec2 x = uv * vec2(P) + uWarp * 0.9 * w;
@@ -98,7 +132,7 @@ vec4 bake(vec2 uv) {
 #elif STYLE == 4
   Bark b = bark_fibrous(uv, uPeriod);
 #else
-  Bark b = bark_furrowed(uv, uPeriod, 0.0);
+  Bark b = bark_braided(uv, uPeriod);
 #endif
   return vec4(b.h, b.crack, b.cell, b.patchy);
 }
@@ -142,6 +176,7 @@ vec4 bake(vec2 uv) {
     float ao = mix(0.35, 1.0, smoothstep(0.0, 0.75, b.h));
     float r = uRoughness + 0.06 * b.crack + 0.05 * mossMask - 0.04 * fine;
     if (uStyle == 3) r -= 0.18 * (1.0 - b.patchy);
+    if (uStyle == 0) r += 0.05 * b.patchy;
     return vec4(ao, clamp(r, 0.04, 1.0), 0.0, 1.0);
   }
 
@@ -151,8 +186,11 @@ vec4 bake(vec2 uv) {
   col = mix(col, uVar * 1.15, smoothstep(0.72, 1.0, b.h) * (0.35 + 0.4 * low) * (1.0 - b.crack));
   col *= 0.88 + 0.24 * fine;
   if (uStyle == 3) col = mix(col, uCrack * 1.4, b.patchy * 0.85);
+  // pale crustose lichen on ridge tops
+  if (uStyle == 0) col = mix(col, uVar * vec3(1.2, 1.25, 1.15), b.patchy * 0.35);
   col = mix(col, uMossCol * (0.75 + 0.5 * fine), mossMask * 0.9);
   col *= mix(0.6, 1.0, smoothstep(0.0, 0.55, b.h));
+  if (uStyle == 0) col *= mix(0.72, 1.05, smoothstep(0.45, 0.85, b.h));
   return vec4(linearToSrgb(col), 1.0);
 }
 `;
@@ -171,6 +209,7 @@ export function bakeBark(p) {
   const period = new THREE.Vector2(px, py);
   const data = dataPrograms.get(style).data({
     uSeed: seed, uPeriod: period, uDepth: p.depth, uCrackWidth: p.crackWidth, uWarp: p.warp, uDetail: p.detail, uRings: p.rings,
+    uAspect: p.tileAspect,
   }, size);
   const common = {
     uData: data,

@@ -28,9 +28,9 @@ function build(name, materials, spec) {
 
 function oak() {
   const bark = makeMaterial('bark', 'Oak Bark', {
-    style: 'furrowed', seed: 4, scale: 5.5, stretch: 3.2, depth: 0.8, crackWidth: 0.38, warp: 0.45, detail: 0.55, moss: 0.18,
-    colorTop: '#5a5044', colorCrack: '#1d1712', colorVar: '#6b6256', colorMoss: '#4a6326', tileSize: 0.85, tileAspect: 1.6,
-    normalStrength: 2,
+    style: 'furrowed', seed: 4, scale: 20, stretch: 6, depth: 0.85, crackWidth: 0.4, warp: 0.6, detail: 0.9, moss: 0.12,
+    colorTop: '#5f584a', colorCrack: '#1a140f', colorVar: '#7a7569', colorMoss: '#4d5e2a', tileSize: 0.85, tileAspect: 1.6,
+    normalStrength: 2.2,
   });
   const leaf = makeMaterial('leaf', 'Oak Twig', {
     kind: 'twig', shape: 'obovate', width: 0.56, tip: 0.2, lobes: 5, lobeDepth: 0.45, serration: 0, petiole: 0.06,
