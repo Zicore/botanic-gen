@@ -1,8 +1,8 @@
 {
-  "name": "botanic-generator",
+  "name": "botanica",
   "private": true,
   "version": "1.0.0",
-  "description": "Procedural 3D foliage asset generator with texture studio",
+  "description": "Node-based procedural foliage studio: PBR textures, LODs, wind data and Godot 4 export",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -12,11 +12,14 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@xyflow/react": "^12.12.0",
+    "fflate": "^0.8.3",
     "lucide-react": "^0.575.0",
     "react": "^19.2.4",
     "react-colorful": "^5.6.1",
     "react-dom": "^19.2.4",
-    "three": "^0.183.1"
+    "three": "^0.183.1",
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^5.1.4",

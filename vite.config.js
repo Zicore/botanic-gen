@@ -4,4 +4,15 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   base: '/botanic-gen/',
   plugins: [react()],
+  worker: { format: 'es' },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          three: ['three'],
+          flow: ['@xyflow/react'],
+        },
+      },
+    },
+  },
 });
