@@ -179,14 +179,27 @@ function spruce() {
 function palm() {
   const bark = makeMaterial('bark', 'Palm Trunk', {
     style: 'fibrous', seed: 5, scale: 4, stretch: 1, depth: 0.6, crackWidth: 0.4, warp: 0.2, detail: 0.5, rings: 0.85, moss: 0,
-    colorTop: '#8a7a64', colorCrack: '#3b3024', colorVar: '#a39277', tileSize: 1.0, tileAspect: 0.9, roughness: 0.9,
+    colorTop: '#7d705c', colorCrack: '#352b20', colorVar: '#94846b', tileSize: 1.0, tileAspect: 0.9, roughness: 0.9,
+  });
+  const crown = makeMaterial('bark', 'Palm Crownshaft', {
+    style: 'fibrous', seed: 8, scale: 6, stretch: 1, depth: 0.35, crackWidth: 0.3, warp: 0.3, detail: 0.7, rings: 0.35, moss: 0,
+    colorTop: '#6b6a3c', colorCrack: '#3a3420', colorVar: '#857a4e', tileSize: 0.6, tileAspect: 1.2, roughness: 0.8,
   });
   const frond = makeMaterial('leaf', 'Palm Frond', {
     kind: 'frond', leaflets: 44, leafletWidth: 0.4, leafletAngle: 58, leafletDroop: 0.35, gaps: 0.2, variants: 2,
     colorBase: '#3e6a2a', colorTip: '#5c8a35', colorVein: '#9bb35a', colorSubsurface: '#a9c84a', colorVariation: 0.3,
     dryness: 0.18, roughness: 0.45, translucency: 0.55,
   });
-  return build('Palm', [bark, frond], {
+  const dead = makeMaterial('leaf', 'Dead Frond', {
+    kind: 'frond', seed: 23, leaflets: 40, leafletWidth: 0.32, leafletAngle: 35, leafletDroop: 0.8, gaps: 0.55, variants: 2,
+    colorBase: '#6e5a37', colorTip: '#8a7448', colorVein: '#a08a5c', colorSubsurface: '#b09050', colorVariation: 0.35,
+    dryness: 0.5, roughness: 0.85, translucency: 0.3,
+  });
+  const fronds = {
+    countByLength: false, phyllotaxy: 'spiral', lengthVar: 0.18, width: 1.5, fold: 28, twist: 20,
+    upAttraction: 0.1, rachisRadius: 0.04, sheath: 2.4, rachisMaterial: crown.id,
+  };
+  return build('Palm', [bark, crown, frond, dead], {
     type: 'tree', id: 'tree', params: { seed: 31337 },
     children: [{
       type: 'trunk', name: 'Trunk',
@@ -194,13 +207,19 @@ function palm() {
         length: 11, radius: 0.24, radiusCurve: [[0, 1], [0.1, 0.85], [1, 0.72]], tilt: 14, gravity: -0.08,
         gnarl: 0.15, gnarlScale: 0.15, upAttraction: 0.25, flare: 0.55, flareHeight: 0.6, flareLobes: 0, ripple: 0.02,
         lengthSegments: 32, radialSegments: 14, material: bark.id,
+        crownLength: 1.4, crownBulge: 1.45, crownTop: 0.3, crownMaterial: crown.id,
       },
       children: [{
         type: 'fronds', name: 'Fronds',
         params: {
-          count: 22, countByLength: false, start: 0.975, end: 1, phyllotaxy: 'spiral', length: 4.2, lengthVar: 0.18,
-          lengthCurve: [[0, 0.75], [1, 1]], width: 1.5, angle: 62, angleVar: 28,
-          gravity: 2.1, gravityCurve: [[0, 0.15], [0.5, 0.6], [1, 1]], upAttraction: 0.1, fold: 28, twist: 20, rachisRadius: 0.035, material: frond.id,
+          ...fronds, count: 22, start: 0.975, end: 1, length: 4.2, lengthCurve: [[0, 0.75], [1, 1]], angle: 58, angleVar: 28,
+          gravity: 2.1, gravityCurve: [[0, 0.15], [0.5, 0.6], [1, 1]], material: frond.id,
+        },
+      }, {
+        type: 'fronds', name: 'Dead fronds',
+        params: {
+          ...fronds, count: 7, start: 0.93, end: 0.965, length: 3.4, width: 1.1, angle: 100, angleVar: 15,
+          gravity: 4, gravityCurve: [[0, 0.5], [1, 1]], upAttraction: 0, fold: 45, flutter: 0.2, material: dead.id,
         },
       }],
     }],

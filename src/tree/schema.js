@@ -104,6 +104,15 @@ export const NODE_TYPES = {
         ],
       },
       {
+        name: 'Crown',
+        params: [
+          f('crownLength', 'Crown length (m)', 0, 0, 6, 0.01, { hint: 'Swollen head at the top of the stem (palm crownshaft / leaf-base mass). 0 = off.' }),
+          f('crownBulge', 'Crown bulge', 1.5, 0.6, 3, 0.01),
+          f('crownTop', 'Crown overshoot', 0.25, 0, 1, 0.01, { hint: 'How far the crown extends above the stem tip, relative to its length.' }),
+          m('crownMaterial', 'Crown material', 'bark', { hint: 'Empty = use the stem bark.' }),
+        ],
+      },
+      {
         name: 'Surface',
         params: [
           f('ripple', 'Ripple', 0.05, 0, 0.4, 0.005),
@@ -253,6 +262,7 @@ export const NODE_TYPES = {
         name: 'Rachis',
         params: [
           f('rachisRadius', 'Rachis radius (m)', 0.03, 0, 0.3, 0.001),
+          f('sheath', 'Leaf-base sheath', 0, 0, 5, 0.01, { hint: 'Widens the rachis toward its base into a clasping sheath.' }),
           m('rachisMaterial', 'Rachis material', 'bark', { hint: 'Empty = inherit bark from parent.' }),
         ],
       },

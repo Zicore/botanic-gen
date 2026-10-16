@@ -378,7 +378,8 @@ export function generateTree(doc) {
           let radiusAt;
           if (isFrond) {
             const rr = Math.min(P.rachisRadius * scale, parentR * 0.9);
-            radiusAt = (t) => rr * (1 - 0.75 * t);
+            const sheath = P.sheath || 0;
+            radiusAt = (t) => rr * (1 - 0.75 * t) * (1 + sheath * Math.max(0, 1 - t / 0.14) ** 2);
           } else {
             const baseR = Math.min(parentR * P.radiusRatio, parentR * 0.92);
             const collarLen = parentR * 2.5;
@@ -448,6 +449,10 @@ export function generateTree(doc) {
     const maxR = Math.max(...spines.map((s) => s.rad[0] || 0));
     for (const s of spines) {
       meshTube(s, node, builder('bark', s.material), { noise3, scale, quality, G, materials, maxR });
+      if (node.type === 'trunk' && P.crownLength > 0) {
+        const crown = crownSpine(s, P, scale);
+        if (crown) meshTube(crown, { type: 'crown', params: { radialSegments: P.radialSegments, ripple: 0.025, rippleScale: 4 } }, builder('bark', crown.material), { noise3, scale, quality, G, materials });
+      }
     }
   }
 
@@ -535,6 +540,30 @@ function meshCollisionTube(spine, P, out, scale) {
   // top cap
   const top = base + steps * radial;
   for (let j = 1; j < radial - 1; j++) out.idx.push(top, top + j, top + j + 1);
+}
+
+/** Swollen head at the top of a stem: resampled top section plus a short overshoot. */
+function crownSpine(stem, P, scale) {
+  const len = Math.min(P.crownLength * scale, stem.length * 0.9);
+  if (len < 0.01) return null;
+  const over = len * P.crownTop;
+  const total = len + over;
+  const t0 = 1 - len / stem.length;
+  const base = stem.sample(t0);
+  const tip = stem.sample(1);
+  const n = 14;
+  const crown = new Spine(stem.node, null, 0);
+  for (let i = 0; i <= n; i++) {
+    const d = (i / n) * total;
+    if (d <= len) crown.pts.push(stem.sample(t0 + (d / len) * (1 - t0)).p);
+    else crown.pts.push(tip.p.clone().addScaledVector(tip.T, d - len));
+  }
+  crown.computeFrames(base.N);
+  const profile = bakeCurve([[0, 1], [0.45, P.crownBulge], [0.8, P.crownBulge * 0.85], [1, 0.25]]);
+  crown.rad = crown.s.map((d) => base.r * profile(crown.length > 0 ? d / crown.length : 0));
+  crown.seed = stem.seed ^ 0xc0c0;
+  crown.material = P.crownMaterial ?? stem.material;
+  return crown;
 }
 
 function isNodeActive(node, nodes) {
