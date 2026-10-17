@@ -499,8 +499,8 @@ function cityPine() {
     colorTop: '#7a5136', colorCrack: '#2e1c12', colorVar: '#94603c', tileSize: 0.6, tileAspect: 1.4,
   });
   const needles = makeMaterial('leaf', 'Pine Needles', {
-    kind: 'needles', seed: 31, needleDensity: 1, needleLength: 0.42, needleAngle: 55, needleCurve: 0.15, needleWidth: 0.7,
-    sideShoots: 5, colorBase: '#2a4a26', colorTip: '#4a6e3a', colorVein: '#5a4030', colorSubsurface: '#7a9a45',
+    kind: 'needles', seed: 31, needleDensity: 0.7, needleLength: 0.34, needleAngle: 58, needleCurve: 0.15, needleWidth: 0.5,
+    sideShoots: 4, colorBase: '#2a4a26', colorTip: '#4a6e3a', colorVein: '#5a4030', colorSubsurface: '#7a9a45',
     colorVariation: 0.3, dryness: 0.06, roughness: 0.7, translucency: 0.35, alphaCutoff: 0.4,
   });
   return build('City Pine', [bark, needles], {
