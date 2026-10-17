@@ -4,6 +4,13 @@ import { useStore } from '../state/store.js';
 import { engine } from '../state/engine.js';
 import { NumberField } from './controls/NumberField.jsx';
 
+const LODS = [
+  [0, 'LOD0'],
+  [1, 'LOD1'],
+  [2, 'LOD2'],
+  ['auto', 'Auto'],
+];
+
 const MODES = [
   ['lit', 'Lit'],
   ['albedo', 'Albedo'],
@@ -17,6 +24,9 @@ export function ViewportOverlay() {
   const result = useStore((s) => s.result);
   const generating = useStore((s) => s.generating);
   const bakeMs = useStore((s) => s.bakeMs);
+  const lodStats = useStore((s) => s.lodStats);
+  const activeLod = useStore((s) => s.activeLod);
+  const lodDistance = useStore((s) => s.lodDistance);
   const { setView } = useStore.getState();
   const [envOpen, setEnvOpen] = useState(false);
   const envRef = useRef(null);
@@ -27,7 +37,7 @@ export function ViewportOverlay() {
     return () => window.removeEventListener('pointerdown', close, true);
   }, [envOpen]);
 
-  const s = result?.stats;
+  const s = activeLod > 0 ? lodStats[activeLod] ?? result?.stats : result?.stats;
   const fmt = (n) => (n >= 1000 ? `${(n / 1000).toFixed(n >= 100000 ? 0 : 1)}k` : String(n));
 
   return (
@@ -36,6 +46,13 @@ export function ViewportOverlay() {
         <div className="segmented small">
           {MODES.map(([k, l]) => (
             <button key={k} className={view.mode === k ? 'active' : ''} onClick={() => setView({ mode: k })}>{l}</button>
+          ))}
+        </div>
+        <div className="segmented small" title="Preview the exported LODs. Auto switches by camera distance with the Godot visibility ranges.">
+          {LODS.map(([k, l]) => (
+            <button key={k} className={view.lod === k ? 'active' : ''} onClick={() => setView({ lod: k })}>
+              {view.lod === 'auto' && k === activeLod ? <u>{l}</u> : l}
+            </button>
           ))}
         </div>
       </div>
@@ -91,6 +108,9 @@ export function ViewportOverlay() {
         <span className={`dot ${generating ? 'busy' : ''}`} />
         {s ? (
           <>
+            {view.lod !== 0 && (
+              <span><b>LOD{activeLod}</b>{lodDistance != null ? ` · ${lodDistance.toFixed(0)} m` : ''}</span>
+            )}
             <span><b>{fmt(s.triangles)}</b> tris</span>
             <span><b>{fmt(s.vertices)}</b> verts</span>
             <span><b>{s.drawCalls}</b> draws</span>

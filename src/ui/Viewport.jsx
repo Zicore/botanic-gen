@@ -9,6 +9,7 @@ export function Viewport() {
     const viewer = new Viewer(ref.current);
     engine.viewer = viewer;
     viewer.setView(useStore.getState().view);
+    viewer.onLod = (level, dist) => useStore.getState().setActiveLod(level, dist);
     if (engine.textures.size) viewer.setTextures(engine.textures);
     if (engine.result) viewer.setResult(engine.result, { reframe: true });
     window.__botanica = { engine, viewer, store: useStore };

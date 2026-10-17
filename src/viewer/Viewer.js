@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { Sky } from 'three/examples/jsm/objects/Sky.js';
 import { createBarkMaterial, createLeafMaterial, barkDepthMaterial, windUniforms } from './materials.js';
+import { lodRanges, LOD_COUNT } from '../export/lod.js';
 
 const DEG = Math.PI / 180;
 
@@ -93,6 +94,13 @@ export class Viewer {
 
     this.treeGroup = new THREE.Group();
     this.scene.add(this.treeGroup);
+    // one group per LOD level; LOD1/2 are only filled while the LOD preview is in use
+    this.lodGroups = Array.from({ length: LOD_COUNT }, () => new THREE.Group());
+    this.treeGroup.add(...this.lodGroups);
+    this.lodResults = [];
+    this.activeLod = 0;
+    this.lodDistance = null;
+    this.onLod = null;
     this.skeleton = null;
 
     this.materials = new Map(); // key -> material
@@ -273,20 +281,16 @@ export class Viewer {
     return mat;
   }
 
-  setResult(result, { reframe = false } = {}) {
-    for (const child of [...this.treeGroup.children]) {
-      child.geometry.dispose();
-      this.treeGroup.remove(child);
-    }
-    if (this.skeleton) {
-      this.skeleton.geometry.dispose();
-      this.scene.remove(this.skeleton);
-      this.skeleton = null;
-    }
-    this.result = result;
-    if (!result) return;
+  *meshes() {
+    for (const g of this.lodGroups) yield* g.children;
+  }
 
-    for (const g of result.groups) {
+  fillGroup(group, result) {
+    for (const child of [...group.children]) {
+      child.geometry.dispose();
+      group.remove(child);
+    }
+    for (const g of result?.groups || []) {
       const geo = new THREE.BufferGeometry();
       const A = g.attributes;
       geo.setAttribute('position', new THREE.BufferAttribute(A.position, 3));
@@ -306,8 +310,50 @@ export class Viewer {
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       mesh.customDepthMaterial = g.kind === 'leaf' ? mat.userData.depthMaterial : (this.barkDepth ??= barkDepthMaterial());
-      this.treeGroup.add(mesh);
+      group.add(mesh);
     }
+  }
+
+  /** Lower LOD result for the preview (level >= 1); null clears it. */
+  setLodResult(level, result) {
+    this.lodResults[level] = result;
+    this.fillGroup(this.lodGroups[level], result);
+    this.applyMode();
+  }
+
+  clearLods() {
+    for (let l = 1; l < LOD_COUNT; l++) this.setLodResult(l, null);
+  }
+
+  /** Picks the visible LOD: fixed, or by camera distance with the exported Godot ranges. */
+  updateLod() {
+    const want = this.view.lod ?? 0;
+    let level = want;
+    let dist = null;
+    if (want === 'auto' && this.bounds) {
+      dist = this.camera.position.distanceTo(new THREE.Vector3().fromArray(this.bounds.center));
+      const r = lodRanges(Math.max(0.5, this.bounds.max.y));
+      level = dist < r[0].end ? 0 : dist < r[1].end ? 1 : 2;
+    }
+    if (level > 0 && !this.lodResults[level]) level = 0; // still generating
+    this.lodGroups.forEach((g, l) => (g.visible = l === level));
+    const moved = dist != null && (this.lodDistance == null || Math.abs(dist - this.lodDistance) > 0.5);
+    if (level !== this.activeLod || moved || (dist == null) !== (this.lodDistance == null)) {
+      this.activeLod = level;
+      this.lodDistance = dist;
+      this.onLod?.(level, dist);
+    }
+  }
+
+  setResult(result, { reframe = false } = {}) {
+    if (this.skeleton) {
+      this.skeleton.geometry.dispose();
+      this.scene.remove(this.skeleton);
+      this.skeleton = null;
+    }
+    this.result = result;
+    this.fillGroup(this.lodGroups[0], result);
+    if (!result) return;
 
     if (result.skeleton?.length) {
       const geo = new THREE.BufferGeometry();
@@ -355,7 +401,7 @@ export class Viewer {
 
   applyMode() {
     const mode = this.view.mode;
-    for (const mesh of this.treeGroup.children) {
+    for (const mesh of this.meshes()) {
       const g = mesh.userData.group;
       const lit = this.getMaterial(g.kind, g.materialId, g.kind === 'leaf' ? 0.85 : 0);
       lit.wireframe = mode === 'wireframe';
@@ -391,6 +437,7 @@ export class Viewer {
     const dt = Math.min(0.1, this.timer.getDelta());
     windUniforms.uTime.value += dt;
     this.controls.update();
+    this.updateLod();
     this.renderer.render(this.scene, this.camera);
   }
 

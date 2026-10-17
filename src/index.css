@@ -330,7 +330,7 @@ input, select, button { font: inherit; color: inherit; }
 .tex-meta { margin-left: auto; color: var(--dim); font-family: var(--mono); font-size: 10.5px; }
 
 /* ------------------------------------------------------------------ viewport overlay */
-.vp-top-left { position: absolute; left: 12px; top: 12px; z-index: 5; }
+.vp-top-left { position: absolute; left: 12px; top: 12px; z-index: 5; display: flex; gap: 8px; flex-wrap: wrap; }
 .vp-top-right { position: absolute; right: 12px; top: 12px; z-index: 5; display: flex; gap: 6px; }
 .env { position: relative; }
 .env-pop {

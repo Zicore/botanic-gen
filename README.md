@@ -53,27 +53,31 @@ are 512 px. At the far LOD, thin terminal branches are dropped entirely; the fol
 
 | Template | LOD0 | LOD1 | LOD2 |
 |---|---|---|---|
-| Street Linden | 1,276 | 766 | 228 |
-| Plane Tree | 1,256 | 726 | 202 |
-| Park Oak | 1,228 | 704 | 184 |
-| Columnar Poplar | 716 | 426 | 96 |
-| Birch | 720 | 386 | 96 |
-| Cherry Blossom | 1,048 | 656 | 186 |
-| Conifer | 1,282 | 1,026 | 198 |
-| Boulevard Palm | 1,470 | 604 | 376 |
-| Young Tree | 214 | 142 | 42 |
-| Round Shrub | 212 | 108 | 86 |
+| Street Linden | 1,276 | 722 | 220 |
+| Plane Tree | 1,256 | 692 | 194 |
+| Park Oak | 1,228 | 674 | 184 |
+| Columnar Poplar | 716 | 402 | 96 |
+| Birch | 720 | 362 | 98 |
+| Cherry Blossom | 1,048 | 620 | 180 |
+| Conifer | 1,282 | 954 | 152 |
+| Boulevard Palm | 1,470 | 536 | 316 |
+| Young Tree | 214 | 132 | 34 |
+| Round Shrub | 212 | 100 | 88 |
 
 ### Viewport
 - Physical sky with image-based lighting, shadowed sun, translucency that respects shadows,
   mip-aware alpha so foliage does not thin out with distance.
 - Wind preview (same math as the exported Godot shader) and debug views: albedo, AO, wind weights, wireframe,
   skeleton overlay.
+- **LOD preview**: show LOD0/1/2, or *Auto* to switch by camera distance with the exact visibility ranges of
+  the Godot export.
 
 ### Export
 - **Godot 4 package (.zip)** — drop into a project and instance the `.tscn`:
   - glTF + shared external textures (with `.import` presets for normal maps / VRAM compression)
-  - 3 LODs with per-LOD visibility ranges, a `Trunk-colonly` collider (becomes a StaticBody3D)
+  - 3 LODs with per-LOD visibility ranges, a `Trunk-colonly` collider (becomes a StaticBody3D).
+    All LODs share the LOD0 skeleton and leaf layout — lower levels only use coarser tubes and an evenly
+    spread subset of the leaf cards, enlarged around their middle — so switching never moves branches.
   - `botanica_foliage.gdshader` / `botanica_bark.gdshader`: wind, BACKLIGHT translucency, baked AO, mip-aware alpha
   - ShaderMaterials and an inherited scene that wires everything up
 - **glTF binary (.glb)** with embedded PBR materials, AO in vertex color.

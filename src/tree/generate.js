@@ -269,6 +269,10 @@ export function generateTree(doc) {
   const G = root.params;
   const scale = G.scale;
   const quality = G.quality;
+  // LOD variants share the full-quality skeleton and leaf layout; only meshing gets coarser
+  // (see export/lod.js), so switching levels never moves branches or cards.
+  const lod = { mesh: 1, keep: 1, grow: 1, ...doc.lod };
+  const meshQuality = quality * lod.mesh;
   const treeSeed = G.seed >>> 0;
   const noiseVec = createNoiseVec3(treeSeed);
   const noise3 = createNoise3(treeSeed + 17);
@@ -439,9 +443,10 @@ export function generateTree(doc) {
     if (!spines.length) continue;
     const P = node.params;
     if (node.type === 'fronds') {
-      for (const s of spines) {
-        if (P.rachisRadius > 0) meshTube(s, node, builder('bark', s.material), { noise3, scale, quality, G, materials, radialMax: 5 });
-        meshFrond(s, node, builder('leaf', s.leafMaterial), { scale, quality, G, materials });
+      for (const s0 of spines) {
+        const s = decimateSpine(s0, lod.mesh);
+        if (P.rachisRadius > 0) meshTube(s, node, builder('bark', s.material), { noise3, scale, quality: meshQuality, G, materials, radialMax: 5 });
+        meshFrond(s, node, builder('leaf', s.leafMaterial), { scale, quality: meshQuality, G, materials });
         leafCount++;
       }
       continue;
@@ -449,10 +454,10 @@ export function generateTree(doc) {
     if (node.hideWood) continue; // LOD: spines still carry leaves, the tubes are skipped
     const maxR = Math.max(...spines.map((s) => s.rad[0] || 0));
     for (const s of spines) {
-      meshTube(s, node, builder('bark', s.material), { noise3, scale, quality, G, materials, maxR });
+      meshTube(decimateSpine(s, lod.mesh), node, builder('bark', s.material), { noise3, scale, quality: meshQuality, G, materials, maxR });
       if (node.type === 'trunk' && P.crownLength > 0) {
         const crown = crownSpine(s, P, scale);
-        if (crown) meshTube(crown, { type: 'crown', params: { radialSegments: P.radialSegments, ripple: 0.025, rippleScale: 4 } }, builder('bark', crown.material), { noise3, scale, quality, G, materials });
+        if (crown) meshTube(decimateSpine(crown, lod.mesh), { type: 'crown', params: { radialSegments: P.radialSegments, ripple: 0.025, rippleScale: 4 } }, builder('bark', crown.material), { noise3, scale, quality: meshQuality, G, materials });
       }
     }
   }
@@ -478,7 +483,7 @@ export function generateTree(doc) {
       continue;
     }
     const b = builder('leaf', matId);
-    const added = meshLeaves(node, parentSpines, b, mat, { scale, quality, G, treeSeed, budget: MAX_LEAVES - leafCount });
+    const added = meshLeaves(node, parentSpines, b, mat, { scale, quality: meshQuality, G, treeSeed, budget: MAX_LEAVES - leafCount, keep: lod.keep, grow: lod.grow });
     leafCount += added.count;
     if (added.capped) leavesCapped = true;
   }
@@ -492,7 +497,7 @@ export function generateTree(doc) {
       warnings.push(`Grass "${node.name}" has no leaf material.`);
       continue;
     }
-    leafCount += meshGrass(node, builder('leaf', matId), mat, { scale, quality, G, treeSeed });
+    leafCount += meshGrass(node, builder('leaf', matId), mat, { scale, quality: meshQuality, G, treeSeed });
   }
 
   if (spinesCapped) warnings.push(`Branch limit reached (${MAX_SPINES}). Reduce counts.`);
@@ -565,6 +570,17 @@ function crownSpine(stem, P, scale) {
   crown.seed = stem.seed ^ 0xc0c0;
   crown.material = P.crownMaterial ?? stem.material;
   return crown;
+}
+
+/** The same spine with fewer rings (evenly spaced, ends kept): coarser tubes on the same path. */
+function decimateSpine(spine, q) {
+  const n = spine.pts.length;
+  const segs = Math.min(n - 1, Math.max(2, Math.round((n - 1) * q)));
+  if (segs >= n - 1) return spine;
+  const idx = Array.from({ length: segs + 1 }, (_, k) => Math.round((k * (n - 1)) / segs));
+  const d = Object.assign(Object.create(Spine.prototype), spine);
+  for (const key of ['pts', 'rad', 'T', 'N', 'B', 's']) d[key] = idx.map((i) => spine[key][i]);
+  return d;
 }
 
 function isNodeActive(node, nodes) {
@@ -764,7 +780,10 @@ function meshLeaves(node, parentSpines, b, mat, ctx) {
   const sizeCurve = bakeCurve(P.sizeCurve);
   const refLength = Math.max(1e-6, ...parentSpines.map((s) => s.length));
   let count = 0;
+  let seq = 0; // every candidate card, kept or not: seeds stay stable across LOD subsets
   let capped = false;
+  const keep = ctx.keep ?? 1;
+  const grow = ctx.grow ?? 1;
 
   const X = new Vector3(), Dv = new Vector3(), Nv = new Vector3(), pos = new Vector3();
   const wp = new Vector3(), wn = new Vector3(), wt = new Vector3();
@@ -779,7 +798,10 @@ function meshLeaves(node, parentSpines, b, mat, ctx) {
         capped = true;
         return;
       }
-      const r = rng.fork(count);
+      const k = seq++;
+      // low-discrepancy subset: kept cards spread evenly along every parent
+      if (keep < 1 && ((k * 0.6180339887498949) % 1) >= keep) continue;
+      const r = rng.fork(k);
       const at = parent.sample(sp.t);
       const R = at.N.clone().multiplyScalar(Math.cos(sp.phi)).addScaledVector(at.B, Math.sin(sp.phi));
       const theta = ((sp.tip ? P.angle * 0.25 : P.angle) + r.signed() * P.angleVar) * DEG;
@@ -802,8 +824,11 @@ function meshLeaves(node, parentSpines, b, mat, ctx) {
       X.crossVectors(Dv, Nv).normalize();
       Nv.crossVectors(X, Dv).normalize();
 
-      const size = Math.max(0.001, P.size * sizeCurve(sp.t) * r.vary(1, P.sizeVar) * scale);
+      const size0 = Math.max(0.001, P.size * sizeCurve(sp.t) * r.vary(1, P.sizeVar) * scale);
+      const size = size0 * grow;
       pos.copy(at.p).addScaledVector(R, sp.tip ? 0 : at.r).addScaledVector(Dv, P.offset * scale);
+      // grow around the card's middle, not its base, so the crown keeps its silhouette
+      pos.addScaledVector(Dv, -size0 * (grow - 1) * 0.5);
       if (sp.tip) pos.addScaledVector(at.T, 0);
 
       const tpl = templates[r.int(templates.length)];

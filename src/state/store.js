@@ -72,8 +72,12 @@ export const useStore = create((set, get) => {
       skeleton: false,
       ground: true,
       autoRotate: false,
+      lod: 0, // 0 | 1 | 2 | 'auto' (by camera distance, same ranges as the Godot export)
     },
     result: null,
+    lodStats: [], // stats of the generated LOD1/2 previews, by level
+    activeLod: 0,
+    lodDistance: null,
     generating: false,
     bakeMs: 0,
 
@@ -243,6 +247,14 @@ export const useStore = create((set, get) => {
     },
     setResult(result) {
       set({ result, generating: false });
+    },
+    setLodStats(level, stats) {
+      const lodStats = [...get().lodStats];
+      lodStats[level] = stats;
+      set({ lodStats });
+    },
+    setActiveLod(activeLod, lodDistance) {
+      set({ activeLod, lodDistance });
     },
     setGenerating(generating) {
       set({ generating });

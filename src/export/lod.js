@@ -1,11 +1,15 @@
-// LOD variants are produced by re-running the generator on a transformed document:
-// fewer segments, fewer but larger leaf cards (area-compensated), same seed and structure.
+// LOD variants are produced by re-running the generator with a `lod` block: the skeleton and the
+// leaf layout are grown exactly as for LOD0, then tubes get fewer rings/sides and leaves keep an
+// evenly spread subset of the LOD0 cards, enlarged around their middle (area-compensated).
+// Nothing moves between levels, so the switch only changes detail, not shape.
 
 const LEVELS = [
-  { quality: 1, leafCount: 1, leafSize: 1 },
-  { quality: 0.55, leafCount: 0.45, leafSize: 1.42 },
-  { quality: 0.3, leafCount: 0.18, leafSize: 2.1, hideTwigs: true },
+  { mesh: 1, keep: 1, grow: 1 },
+  { mesh: 0.55, keep: 0.45, grow: 1.4 },
+  { mesh: 0.3, keep: 0.3, grow: 1.7, hideTwigs: true },
 ];
+
+export const LOD_COUNT = LEVELS.length;
 
 // Thin terminal wood (no branch children, <= 3 sides) is already at the segment floor and
 // can't get any cheaper; at the far LOD it's hidden under the foliage anyway, so drop it.
@@ -14,23 +18,16 @@ function isTwigLevel(n, nodes) {
   return !nodes.some((c) => c.parent === n.id && c.enabled !== false && (c.type === 'branches' || c.type === 'fronds'));
 }
 
-export const LOD_COUNT = LEVELS.length;
-
 export function lodDocument(gdoc, level) {
-  const L = LEVELS[level];
   if (level === 0) return gdoc;
+  const L = LEVELS[level];
   return {
     ...gdoc,
+    lod: { mesh: L.mesh, keep: L.keep, grow: L.grow },
     nodes: gdoc.nodes.map((n) => {
       const p = { ...n.params };
-      if (n.type === 'tree') p.quality = Math.max(0.2, p.quality * L.quality);
-      if (n.type === 'leaves') {
-        p.count = Math.max(1, p.count * L.leafCount);
-        p.size = p.size * L.leafSize;
-        p.lengthSegments = Math.max(1, Math.round(p.lengthSegments * 0.5));
-        p.widthSegments = 1;
-      }
-      if (n.type === 'grass') p.count = Math.max(1, Math.round(p.count * L.leafCount * 1.5));
+      // grass blades are seeded per index, so a lower count is already a subset
+      if (n.type === 'grass') p.count = Math.max(1, Math.round(p.count * L.keep * 1.5));
       if (n.type === 'fronds') p.widthSegments = 1;
       const hideWood = L.hideTwigs && isTwigLevel(n, gdoc.nodes);
       return { ...n, params: p, ...(hideWood ? { hideWood } : {}) };

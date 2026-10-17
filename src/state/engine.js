@@ -5,10 +5,13 @@ import { useStore } from './store.js';
 import { createGenerator } from '../tree/generatorClient.js';
 import { getMaterialTextures, pruneTextureCache } from '../materials/textures.js';
 import { materialDefaults, withDefaults } from '../tree/schema.js';
+import { lodDocument, LOD_COUNT } from '../export/lod.js';
 
 export const engine = {
   viewer: null,
   generator: null,
+  lodGenerators: [], // by level (1..), only fed while the viewport previews LODs
+  lodKey: '', // generation key the current LOD previews belong to
   textures: new Map(), // materialId -> { maps, raw, layout, version, params, kind }
   result: null,
   textureVersion: 0,
@@ -64,7 +67,19 @@ export function useEngineSync() {
       },
     );
     engine.generator = gen;
-    return () => gen.dispose();
+    for (let l = 1; l < LOD_COUNT; l++) {
+      engine.lodGenerators[l] = createGenerator(
+        (result) => {
+          engine.viewer?.setLodResult(l, result);
+          useStore.getState().setLodStats(l, result.stats);
+        },
+        (err) => console.error(err),
+      );
+    }
+    return () => {
+      gen.dispose();
+      engine.lodGenerators.forEach((g) => g?.dispose());
+    };
   }, []);
 
   // regenerate when geometry-relevant data changes
@@ -79,7 +94,17 @@ export function useEngineSync() {
     }
     useStore.getState().setGenerating(true);
     engine.generator?.request(gdoc);
+    engine.lodKey = '';
+    engine.viewer?.clearLods();
   }, [doc]);
+
+  // lower LODs: generated only while the preview needs them, and again after every edit
+  useEffect(() => {
+    if (view.lod === 0 || engine.lodKey === lastGenKey.current) return;
+    engine.lodKey = lastGenKey.current;
+    const gdoc = generationDoc(useStore.getState().doc);
+    for (let l = 1; l < LOD_COUNT; l++) engine.lodGenerators[l]?.request(lodDocument(gdoc, l));
+  }, [doc, view.lod]);
 
   // bake textures (debounced; baking is synchronous GPU work)
   const matKey = JSON.stringify(doc.materials.map((m) => [m.id, m.kind, m.params]));
