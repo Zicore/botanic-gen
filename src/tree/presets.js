@@ -493,6 +493,47 @@ function cityConifer() {
   });
 }
 
+function cityPine() {
+  const bark = lowBark('Pine Bark', {
+    style: 'plated', seed: 27, scale: 7, stretch: 1.6, depth: 0.55, crackWidth: 0.25, warp: 0.5, detail: 0.6, moss: 0.05,
+    colorTop: '#7a5136', colorCrack: '#2e1c12', colorVar: '#94603c', tileSize: 0.6, tileAspect: 1.4,
+  });
+  const needles = makeMaterial('leaf', 'Pine Needles', {
+    kind: 'needles', seed: 31, needleDensity: 1, needleLength: 0.42, needleAngle: 55, needleCurve: 0.15, needleWidth: 0.7,
+    sideShoots: 5, colorBase: '#2a4a26', colorTip: '#4a6e3a', colorVein: '#5a4030', colorSubsurface: '#7a9a45',
+    colorVariation: 0.3, dryness: 0.06, roughness: 0.7, translucency: 0.35, alphaCutoff: 0.4,
+  });
+  return build('City Pine', [bark, needles], {
+    type: 'tree', id: 'tree', params: { seed: 2555 },
+    children: [{
+      type: 'trunk', name: 'Trunk',
+      params: {
+        length: 14, radius: 0.22, radiusCurve: [[0, 1], [0.2, 0.8], [1, 0.12]], tilt: 5, gnarl: 0.18, gnarlScale: 0.2,
+        flare: 0.4, flareHeight: 0.6, flareLobes: 0, ripple: 0.03, sink: 0.15, lengthSegments: 10, radialSegments: 6, material: bark.id,
+      },
+      children: [{
+        type: 'branches', name: 'Crown limbs',
+        params: {
+          count: 24, countByLength: false, start: 0.55, end: 0.97, phyllotaxy: 'whorled', whorlSize: 3, rotationJitter: 40,
+          positionJitter: 0.5, length: 0.33, lengthCurve: [[0, 0.8], [0.4, 1], [1, 0.35]], lengthVar: 0.25, radiusRatio: 0.35,
+          angle: 68, angleCurve: [[0, 1.15], [1, 0.6]], angleVar: 12, gravity: 0.15, upAttraction: 0.45, gnarl: 0.45,
+          gnarlScale: 0.6, collar: 0.3, lengthSegments: 3, radialSegments: 3, flex: 0.45,
+        },
+        children: [{
+          type: 'leaves', name: 'Needle cards',
+          params: lowCard(needles.id, {
+            count: 7, start: 0.15, phyllotaxy: 'alternate', size: 1.8, angle: 40, faceUp: 0.75, roll: 40, droop: 0.05,
+            fold: 0.25, normalBlend: 0.65,
+          }),
+        }],
+      }, {
+        type: 'leaves', name: 'Leader cards',
+        params: lowCard(needles.id, { count: 5, start: 0.86, size: 1.3, angle: 25, faceUp: 0.5, normalBlend: 0.65 }),
+      }],
+    }],
+  });
+}
+
 function cityBirch() {
   const bark = lowBark('Birch Bark', {
     style: 'birch', seed: 9, scale: 4, stretch: 1.5, depth: 0.45, crackWidth: 0.3, warp: 0.3, detail: 0.4, rings: 0.75, moss: 0.05,
@@ -680,6 +721,7 @@ export const PRESETS = {
   cityBirch: { label: 'Birch', group: 'city', build: cityBirch },
   cityCherry: { label: 'Cherry Blossom', group: 'city', build: cityCherry },
   cityConifer: { label: 'Conifer', group: 'city', build: cityConifer },
+  cityPine: { label: 'Pine', group: 'city', build: cityPine },
   cityPalm: { label: 'Boulevard Palm', group: 'city', build: cityPalm },
   citySapling: { label: 'Young Tree', group: 'city', build: citySapling },
   cityShrub: { label: 'Round Shrub', group: 'city', build: cityShrub },
