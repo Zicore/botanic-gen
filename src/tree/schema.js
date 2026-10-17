@@ -380,6 +380,7 @@ export const MATERIAL_TYPES = {
           e('kind', 'Kind', 'broadleaf', [
             { value: 'broadleaf', label: 'Single leaf' },
             { value: 'twig', label: 'Leaf cluster (twig)' },
+            { value: 'clump', label: 'Foliage clump (low-poly)' },
             { value: 'needles', label: 'Needle spray' },
             { value: 'frond', label: 'Frond (leaflets)' },
             { value: 'blade', label: 'Grass blade' },
@@ -391,7 +392,7 @@ export const MATERIAL_TYPES = {
       },
       {
         name: 'Shape',
-        showIf: { kind: ['broadleaf', 'twig'] },
+        showIf: { kind: ['broadleaf', 'twig', 'clump'] },
         params: [
           e('shape', 'Outline', 'ovate', [
             { value: 'ovate', label: 'Ovate' },
@@ -423,6 +424,16 @@ export const MATERIAL_TYPES = {
           f('twigCurve', 'Twig curve', 0.25, -1, 1),
           f('twigWidth', 'Twig width', 0.4, 0, 1),
           i('sideTwigs', 'Side twigs', 2, 0, 4),
+        ],
+      },
+      {
+        name: 'Clump',
+        showIf: { kind: 'clump' },
+        params: [
+          i('clumpLeaves', 'Leaves in clump', 90, 10, 300),
+          f('clumpLeafSize', 'Leaf size', 0.13, 0.04, 0.35, 0.005),
+          f('clumpWidth', 'Clump width', 0.9, 0.4, 1, 0.01, { hint: 'Card aspect (width / height).' }),
+          f('twigWidth', 'Twig width', 0.4, 0, 1),
         ],
       },
       {

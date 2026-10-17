@@ -64,7 +64,11 @@ export function TopBar() {
       <div className="tb-group">
         <Dropdown label="Species" icon={null}>
           <div className="dd-title">Load preset (undoable)</div>
-          {Object.entries(PRESETS).map(([k, p]) => (
+          {Object.entries(PRESETS).filter(([, p]) => !p.group).map(([k, p]) => (
+            <button key={k} className="dd-item" onClick={() => loadPreset(k)}>{p.label}</button>
+          ))}
+          <div className="dd-title">City builder · low-poly</div>
+          {Object.entries(PRESETS).filter(([, p]) => p.group === 'city').map(([k, p]) => (
             <button key={k} className="dd-item" onClick={() => loadPreset(k)}>{p.label}</button>
           ))}
         </Dropdown>

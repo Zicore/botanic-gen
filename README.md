@@ -38,10 +38,31 @@ Built with React, React Flow and Three.js.
   albedo, normal and ORM maps.
 - **Foliage**: single leaves (ovate, elliptic, lanceolate, obovate, cordate, deltoid; lobes, serration,
   veins), **twig clusters** (many overlapping leaves with inter-leaf shadowing — the card type real-time
-  trees are built from), needle sprays, palm fronds and grass blades — albedo+alpha, normal, ORM and
+  trees are built from), **foliage clumps** for low-poly crowns, needle sprays, palm fronds and grass blades — albedo+alpha, normal, ORM and
   translucency maps, up to 4 atlas variants.
 
 ![Materials](public/screenshots/materials.jpg)
+
+### City builder templates (low-poly)
+Ten species tuned for scenes with thousands of trees (Species → *City builder · low-poly*): two or
+three wood levels with 3–8 sides, no twig level, and big single-quad **foliage clump** cards (a dense
+mass of small leaves on a twig fan — one card stands in for a whole leafy sub-branch). Bark textures
+are 512 px. At the far LOD, thin terminal branches are dropped entirely; the foliage stays put.
+
+![City builder templates](public/screenshots/city.jpg)
+
+| Template | LOD0 | LOD1 | LOD2 |
+|---|---|---|---|
+| Street Linden | 1,276 | 766 | 228 |
+| Plane Tree | 1,256 | 726 | 202 |
+| Park Oak | 1,228 | 704 | 184 |
+| Columnar Poplar | 716 | 426 | 96 |
+| Birch | 720 | 386 | 96 |
+| Cherry Blossom | 1,048 | 656 | 186 |
+| Conifer | 1,282 | 1,026 | 198 |
+| Boulevard Palm | 1,470 | 604 | 376 |
+| Young Tree | 214 | 142 | 42 |
+| Round Shrub | 212 | 108 | 86 |
 
 ### Viewport
 - Physical sky with image-based lighting, shadowed sun, translucency that respects shadows,

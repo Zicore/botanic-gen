@@ -314,14 +314,11 @@ export async function buildGodotPackage(doc) {
     const r = ranges[mn.lod];
     tscn.push(`[node name="${mn.name}" parent="."]`);
     tscn.push(`surface_material_override/0 = ExtResource("${matIds.get(mn.materialId)}")`);
-    if (r.begin > 0) {
-      tscn.push(`visibility_range_begin = ${r.begin.toFixed(2)}`);
-      tscn.push(`visibility_range_begin_margin = ${(r.begin * 0.08).toFixed(2)}`);
-    }
-    if (mn.lod < LOD_COUNT - 1) {
-      tscn.push(`visibility_range_end = ${r.end.toFixed(2)}`);
-      tscn.push(`visibility_range_end_margin = ${(r.end * 0.08).toFixed(2)}`);
-    }
+    // No hysteresis margins: Godot starts every instance hidden and shrinks the range of a
+    // hidden one by its margins, so a tree spawned inside the margin band of a LOD boundary
+    // would show neither LOD until the camera left the band.
+    if (r.begin > 0) tscn.push(`visibility_range_begin = ${r.begin.toFixed(2)}`);
+    if (mn.lod < LOD_COUNT - 1) tscn.push(`visibility_range_end = ${r.end.toFixed(2)}`);
     tscn.push('');
   }
   files[`${root}${base}.tscn`] = strToU8(tscn.join('\n'));
@@ -351,7 +348,7 @@ ${stats}
 - \`${base}.gltf\` / \`.bin\` — meshes for all LODs plus \`Trunk-colonly\`
   (Godot turns it into a StaticBody3D trunk collider on import).
 - \`${base}.tscn\` — inherited scene: assigns the Botanica shader materials and sets
-  per-LOD visibility ranges (hard switch with hysteresis margins). Godot's \`Self\` fade mode
+  per-LOD visibility ranges (hard switch, no margins). Godot's \`Self\` fade mode
   blends through transparency, which causes sorting artefacts on foliage, so it is left off.
 - \`materials/*.tres\` — ShaderMaterials (bark + foliage).
 - \`shaders/\` — \`botanica_foliage.gdshader\` (alpha-tested, double-sided, translucency via

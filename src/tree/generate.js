@@ -446,6 +446,7 @@ export function generateTree(doc) {
       }
       continue;
     }
+    if (node.hideWood) continue; // LOD: spines still carry leaves, the tubes are skipped
     const maxR = Math.max(...spines.map((s) => s.rad[0] || 0));
     for (const s of spines) {
       meshTube(s, node, builder('bark', s.material), { noise3, scale, quality, G, materials, maxR });

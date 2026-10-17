@@ -19,6 +19,8 @@ export function leafAspect(p) {
       const reach = p.leafScale * Math.sin((p.twigSpread * Math.PI) / 180) * 1.05 + p.leafScale * p.width * 0.35;
       return Math.min(1, Math.max(0.35, 2 * reach + 0.06));
     }
+    case 'clump':
+      return p.clumpWidth;
     case 'blade':
       return p.blades > 1 ? Math.min(1, 0.12 + p.blades * 0.06) : 0.09;
     default: {

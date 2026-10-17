@@ -4,8 +4,15 @@
 const LEVELS = [
   { quality: 1, leafCount: 1, leafSize: 1 },
   { quality: 0.55, leafCount: 0.45, leafSize: 1.42 },
-  { quality: 0.3, leafCount: 0.18, leafSize: 2.1 },
+  { quality: 0.3, leafCount: 0.18, leafSize: 2.1, hideTwigs: true },
 ];
+
+// Thin terminal wood (no branch children, <= 3 sides) is already at the segment floor and
+// can't get any cheaper; at the far LOD it's hidden under the foliage anyway, so drop it.
+function isTwigLevel(n, nodes) {
+  if (n.type !== 'branches' || (n.params.radialSegments ?? 9) > 3) return false;
+  return !nodes.some((c) => c.parent === n.id && c.enabled !== false && (c.type === 'branches' || c.type === 'fronds'));
+}
 
 export const LOD_COUNT = LEVELS.length;
 
@@ -25,7 +32,8 @@ export function lodDocument(gdoc, level) {
       }
       if (n.type === 'grass') p.count = Math.max(1, Math.round(p.count * L.leafCount * 1.5));
       if (n.type === 'fronds') p.widthSegments = 1;
-      return { ...n, params: p };
+      const hideWood = L.hideTwigs && isTwigLevel(n, gdoc.nodes);
+      return { ...n, params: p, ...(hideWood ? { hideWood } : {}) };
     }),
   };
 }

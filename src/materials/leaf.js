@@ -1,4 +1,4 @@
-// Procedural leaf atlases: broadleaf, twig clusters, needle sprays, palm fronds, grass blades.
+// Procedural leaf atlases: broadleaf, twig clusters, foliage clumps, needle sprays, palm fronds, grass blades.
 //
 // Stage 1 (Canvas 2D) draws vector layers:
 //   L1: R = blade mask, G = veins, B = blurred mask (edge distance), A = woody parts
@@ -11,7 +11,8 @@ import { GLSL_NOISE } from './glsl.js';
 import { createBakeProgram, dataTexture, hexToLinear } from './gpu.js';
 import { leafLayout, leafAspect } from './layout.js';
 
-const KINDS = { broadleaf: 0, needles: 1, frond: 2, blade: 3, twig: 4 };
+// clumps share the twig shading path (per-leaf tint gradient)
+const KINDS = { broadleaf: 0, needles: 1, frond: 2, blade: 3, twig: 4, clump: 4 };
 
 // ---------------------------------------------------------------------------
 // Stage 1: vector layers
@@ -262,6 +263,51 @@ function drawTwig(layers, map, p, aspect, rng) {
   for (const lf of leaves) drawBroadleaf(layers, subMapper(map, lf.x, lf.y, lf.ang, lf.size), p, leafAsp, rng);
 }
 
+/**
+ * A rounded mass of many small leaves on a fan of twigs: one card stands in for a whole
+ * leafy sub-branch, which is how low-poly crowns stay closed with a few hundred quads.
+ */
+function drawClump(layers, map, p, aspect, rng) {
+  const leafAsp = leafAspect({ ...p, kind: 'broadleaf' });
+  const L = p.clumpLeafSize;
+  const rx = aspect / 2 - L * 0.45;
+  const ry = 0.5 - L * 0.5;
+  const cy = 0.5;
+  const inside = (x, y) => (x / rx) ** 2 + ((y - cy) / ry) ** 2;
+
+  // twig fan: a short stem, then twigs radiating toward the rim
+  const fork = [0, 0.3];
+  woodStroke(layers, [map.P(0, 0.005), map.P(0, 0.15), map.P(...fork)], (0.02 + 0.02 * p.twigWidth) * map.unit, 0.012 * map.unit);
+  const twigs = 6;
+  for (let k = 0; k < twigs; k++) {
+    const a = (-0.85 + (1.7 * (k + 0.5)) / twigs + rng.signed() * 0.12) * Math.PI * 0.5;
+    const ex = Math.sin(a) * rx * 0.8, ey = cy + Math.cos(a) * ry * 0.8;
+    const mx = (fork[0] + ex) / 2 + rng.signed() * 0.03, my = (fork[1] + ey) / 2;
+    woodStroke(layers, [map.P(...fork), map.P(mx, my), map.P(ex, ey)], (0.01 + 0.012 * p.twigWidth) * map.unit, 0.003 * map.unit);
+  }
+
+  // leaves: scattered through the ellipse, pointing away from the clump center;
+  // inner ones are drawn first so the outer shell shades them
+  const leaves = [];
+  const n = Math.max(1, p.clumpLeaves);
+  for (let i = 0, tries = 0; i < n && tries < n * 20; tries++) {
+    const x = rng.signed() * rx, y = cy + rng.signed() * ry;
+    const d = inside(x, y);
+    if (d > 1) continue;
+    // lumpy silhouette: thin out the rim at random, keep the core dense
+    if (d > 0.6 && rng.next() > 0.55 + 0.45 * Math.sin(Math.atan2(y - cy, x) * 5 + p.seed) ** 2) continue;
+    const out = Math.atan2(x, y - cy + 0.25);
+    const size = L * (0.75 + rng.next() * 0.45);
+    const ang = -out + rng.signed() * 0.6;
+    // anchor so the blade's middle lands on the sample
+    const ox = x + Math.sin(ang) * size * 0.5, oy = y - Math.cos(ang) * size * 0.5;
+    leaves.push({ x: ox, y: oy, size, ang, order: Math.sqrt(d) + rng.signed() * 0.35 });
+    i++;
+  }
+  leaves.sort((a, b) => a.order - b.order);
+  for (const lf of leaves) drawBroadleaf(layers, subMapper(map, lf.x, lf.y, lf.ang, lf.size), p, leafAsp, rng);
+}
+
 function drawNeedleShoot(layers, map, p, rng, origin, dir, length, scale, depth) {
   const bend = rng.signed() * 0.08;
   const nx = -dir[1], ny = dir[0];
@@ -407,7 +453,7 @@ function drawBlades(layers, map, p, aspect, rng) {
   }
 }
 
-const DRAW = { broadleaf: drawBroadleaf, twig: drawTwig, needles: drawNeedles, frond: drawFrond, blade: drawBlades };
+const DRAW = { broadleaf: drawBroadleaf, twig: drawTwig, clump: drawClump, needles: drawNeedles, frond: drawFrond, blade: drawBlades };
 
 /** Separable box blur (3 passes ≈ gaussian) on a single 8-bit channel. */
 function blurChannel(src, size, radius) {
@@ -451,7 +497,7 @@ function drawLayers(p, size) {
     const map = cellMapper(cell, layout.aspect, size);
     const rng = new Rng((p.seed * 1013 + k * 7919 + 1) >>> 0);
     const variant = { ...p };
-    if (p.kind === 'broadleaf' || p.kind === 'twig') variant.width = p.width * (1 + rng.signed() * 0.05);
+    if (p.kind === 'broadleaf' || p.kind === 'twig' || p.kind === 'clump') variant.width = p.width * (1 + rng.signed() * 0.05);
     // keep each variant inside its own cell
     const x0 = cell.u0 * size - 1, y0 = cell.v0 * size - 1;
     const w = (cell.u1 - cell.u0) * size + 2, h = (cell.v1 - cell.v0) * size + 2;
