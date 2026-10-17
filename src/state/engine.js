@@ -5,13 +5,16 @@ import { useStore } from './store.js';
 import { createGenerator } from '../tree/generatorClient.js';
 import { getMaterialTextures, pruneTextureCache } from '../materials/textures.js';
 import { materialDefaults, withDefaults } from '../tree/schema.js';
-import { lodDocument, LOD_COUNT } from '../export/lod.js';
+import { lodDocument, LOD_COUNT, IMPOSTOR_LEVEL } from '../export/lod.js';
+import { bakeImpostor } from '../impostor/impostor.js';
 
 export const engine = {
   viewer: null,
   generator: null,
   lodGenerators: [], // by level (1..), only fed while the viewport previews LODs
   lodKey: '', // generation key the current LOD previews belong to
+  impostorKey: '',
+  impostorTimer: 0,
   textures: new Map(), // materialId -> { maps, raw, layout, version, params, kind }
   result: null,
   textureVersion: 0,
@@ -21,6 +24,41 @@ export const engine = {
     for (const l of this.listeners) l();
   },
 };
+
+/** Impostor bake settings for a document: frame layout from the Tree node, look from the first leaf material. */
+export function impostorSettings(doc) {
+  const tree = doc.nodes.find((n) => n.type === 'tree')?.params ?? {};
+  const leaf = doc.materials.find((m) => m.kind === 'leaf')?.params;
+  return {
+    enabled: tree.impostor !== false,
+    frames: Number(tree.impostorFrames) || 8,
+    frameSize: Number(tree.impostorResolution) || 128,
+    alphaCutoff: Math.min(0.45, (leaf?.alphaCutoff ?? 0.45) * 0.9),
+    subsurface: leaf?.colorSubsurface ?? '#a8c43c',
+  };
+}
+
+/**
+ * Re-bakes the viewport impostor when the preview can show it and the tree or its textures
+ * changed. Debounced: baking renders frames² views and runs on the main thread.
+ */
+export function scheduleImpostor() {
+  clearTimeout(engine.impostorTimer);
+  engine.impostorTimer = setTimeout(() => {
+    const { doc, view } = useStore.getState();
+    const s = impostorSettings(doc);
+    if ((view.lod !== IMPOSTOR_LEVEL && view.lod !== 'auto') || !s.enabled || !engine.result?.bounds || !engine.viewer) {
+      if (!s.enabled) engine.viewer?.setImpostor(null);
+      return;
+    }
+    const key = `${JSON.stringify(generationDoc(doc))}|${engine.textureVersion}`;
+    if (key === engine.impostorKey) return;
+    engine.impostorKey = key;
+    const bake = bakeImpostor(engine.viewer.renderer, engine.result, engine.textures, s);
+    engine.viewer.setImpostor(bake, s);
+    useStore.getState().setLodStats(IMPOSTOR_LEVEL, { triangles: 2, vertices: 4, drawCalls: 1, leaves: 0, ms: bake.ms });
+  }, 200);
+}
 
 /** The part of the document that affects geometry (positions and names are cosmetic). */
 export function generationDoc(doc) {
@@ -60,6 +98,7 @@ export function useEngineSync() {
         engine.pendingReframe = false;
         engine.viewer?.setResult(result, { reframe });
         useStore.getState().setResult(result);
+        scheduleImpostor();
       },
       (err) => {
         console.error(err);
@@ -95,6 +134,7 @@ export function useEngineSync() {
     useStore.getState().setGenerating(true);
     engine.generator?.request(gdoc);
     engine.lodKey = '';
+    engine.impostorKey = '';
     engine.viewer?.clearLods();
   }, [doc]);
 
@@ -106,6 +146,8 @@ export function useEngineSync() {
     for (let l = 1; l < LOD_COUNT; l++) engine.lodGenerators[l]?.request(lodDocument(gdoc, l));
   }, [doc, view.lod]);
 
+  useEffect(() => scheduleImpostor(), [view.lod]);
+
   // bake textures (debounced; baking is synchronous GPU work)
   const matKey = JSON.stringify(doc.materials.map((m) => [m.id, m.kind, m.params]));
   useEffect(() => {
@@ -114,6 +156,7 @@ export function useEngineSync() {
       if (changed) {
         engine.viewer?.setTextures(engine.textures);
         engine.notify();
+        scheduleImpostor();
         useStore.getState().setBakeMs(ms);
       }
     }, engine.textures.size ? 140 : 0);

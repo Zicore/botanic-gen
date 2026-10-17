@@ -8,6 +8,7 @@ const LODS = [
   [0, 'LOD0'],
   [1, 'LOD1'],
   [2, 'LOD2'],
+  [3, 'LOD3'],
   ['auto', 'Auto'],
 ];
 
@@ -48,7 +49,7 @@ export function ViewportOverlay() {
             <button key={k} className={view.mode === k ? 'active' : ''} onClick={() => setView({ mode: k })}>{l}</button>
           ))}
         </div>
-        <div className="segmented small" title="Preview the exported LODs. Auto switches by camera distance with the Godot visibility ranges.">
+        <div className="segmented small" title="Preview the exported LODs (LOD3 = billboard impostor). Auto switches by camera distance with the Godot visibility ranges.">
           {LODS.map(([k, l]) => (
             <button key={k} className={view.lod === k ? 'active' : ''} onClick={() => setView({ lod: k })}>
               {view.lod === 'auto' && k === activeLod ? <u>{l}</u> : l}
@@ -109,7 +110,7 @@ export function ViewportOverlay() {
         {s ? (
           <>
             {view.lod !== 0 && (
-              <span><b>LOD{activeLod}</b>{lodDistance != null ? ` · ${lodDistance.toFixed(0)} m` : ''}</span>
+              <span><b>LOD{activeLod}</b>{activeLod === 3 ? ' billboard' : ''}{lodDistance != null ? ` · ${lodDistance.toFixed(0)} m` : ''}</span>
             )}
             <span><b>{fmt(s.triangles)}</b> tris</span>
             <span><b>{fmt(s.vertices)}</b> verts</span>

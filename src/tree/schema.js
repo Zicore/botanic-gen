@@ -61,6 +61,22 @@ export const NODE_TYPES = {
           f('barkTint', 'Bark tint variation', 0.06, 0, 0.3, 0.01),
         ],
       },
+      {
+        name: 'Billboard LOD',
+        params: [
+          b('impostor', 'Billboard after last LOD', true, { hint: 'Camera-facing impostor baked from the tree, used beyond LOD2 (Godot export and LOD preview).' }),
+          e('impostorFrames', 'Views', 8, [
+            { value: 6, label: '6 × 6' },
+            { value: 8, label: '8 × 8' },
+            { value: 12, label: '12 × 12' },
+          ], { showIf: { impostor: true }, hint: 'Directions baked over the upper hemisphere. More views = smoother turning, bigger atlas.' }),
+          e('impostorResolution', 'View resolution', 128, [
+            { value: 128, label: '128 px' },
+            { value: 256, label: '256 px' },
+            { value: 512, label: '512 px' },
+          ], { showIf: { impostor: true }, hint: 'Pixels per view; the atlas is views × resolution wide. 128 px matches a ~12 m tree at the billboard distance in 1080p.' }),
+        ],
+      },
     ],
   },
 

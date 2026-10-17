@@ -69,7 +69,7 @@ are 512 px. At the far LOD, thin terminal branches are dropped entirely; the fol
   mip-aware alpha so foliage does not thin out with distance.
 - Wind preview (same math as the exported Godot shader) and debug views: albedo, AO, wind weights, wireframe,
   skeleton overlay.
-- **LOD preview**: show LOD0/1/2, or *Auto* to switch by camera distance with the exact visibility ranges of
+- **LOD preview**: show LOD0/1/2/3, or *Auto* to switch by camera distance with the exact visibility ranges of
   the Godot export.
 
 ### Export
@@ -78,6 +78,10 @@ are 512 px. At the far LOD, thin terminal branches are dropped entirely; the fol
   - 3 LODs with per-LOD visibility ranges, a `Trunk-colonly` collider (becomes a StaticBody3D).
     All LODs share the LOD0 skeleton and leaf layout — lower levels only use coarser tubes and an evenly
     spread subset of the leaf cards, enlarged around their middle — so switching never moves branches.
+  - **LOD3 billboard impostor** (Tree node → *Billboard LOD*): the tree is baked from 8×8 directions over the
+    upper hemisphere into an albedo + object-space-normal atlas (hemi-octahedral, 128 px per view by default).
+    A camera-facing quad blends the four nearest views, so it holds up from any angle including straight
+    down, is lit dynamically through the baked normals and casts shadows. 2 triangles per tree.
   - `botanica_foliage.gdshader` / `botanica_bark.gdshader`: wind, BACKLIGHT translucency, baked AO, mip-aware alpha
   - ShaderMaterials and an inherited scene that wires everything up
 - **glTF binary (.glb)** with embedded PBR materials, AO in vertex color.

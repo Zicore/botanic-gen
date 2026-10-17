@@ -5,7 +5,8 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { Sky } from 'three/examples/jsm/objects/Sky.js';
 import { createBarkMaterial, createLeafMaterial, barkDepthMaterial, windUniforms } from './materials.js';
-import { lodRanges, LOD_COUNT } from '../export/lod.js';
+import { lodRanges, LOD_COUNT, IMPOSTOR_LEVEL } from '../export/lod.js';
+import { createImpostorMesh } from '../impostor/impostor.js';
 
 const DEG = Math.PI / 180;
 
@@ -94,8 +95,8 @@ export class Viewer {
 
     this.treeGroup = new THREE.Group();
     this.scene.add(this.treeGroup);
-    // one group per LOD level; LOD1/2 are only filled while the LOD preview is in use
-    this.lodGroups = Array.from({ length: LOD_COUNT }, () => new THREE.Group());
+    // one group per LOD level plus the impostor; only filled while the LOD preview is in use
+    this.lodGroups = Array.from({ length: LOD_COUNT + 1 }, () => new THREE.Group());
     this.treeGroup.add(...this.lodGroups);
     this.lodResults = [];
     this.activeLod = 0;
@@ -321,8 +322,21 @@ export class Viewer {
     this.applyMode();
   }
 
+  /** Billboard impostor preview from a bake (see impostor/impostor.js); null clears it. */
+  setImpostor(bake, opts) {
+    const group = this.lodGroups[IMPOSTOR_LEVEL];
+    for (const child of [...group.children]) {
+      child.geometry.dispose();
+      child.userData.dispose?.();
+      group.remove(child);
+    }
+    this.impostor = bake;
+    if (bake) group.add(createImpostorMesh(bake, opts));
+  }
+
   clearLods() {
     for (let l = 1; l < LOD_COUNT; l++) this.setLodResult(l, null);
+    this.setImpostor(null);
   }
 
   /** Picks the visible LOD: fixed, or by camera distance with the exported Godot ranges. */
@@ -333,9 +347,11 @@ export class Viewer {
     if (want === 'auto' && this.bounds) {
       dist = this.camera.position.distanceTo(new THREE.Vector3().fromArray(this.bounds.center));
       const r = lodRanges(Math.max(0.5, this.bounds.max.y));
-      level = dist < r[0].end ? 0 : dist < r[1].end ? 1 : 2;
+      level = r.findIndex((x) => dist < x.end);
+      if (level === IMPOSTOR_LEVEL && !this.impostor) level = LOD_COUNT - 1;
     }
-    if (level > 0 && !this.lodResults[level]) level = 0; // still generating
+    const ready = level === IMPOSTOR_LEVEL ? !!this.impostor : level === 0 || !!this.lodResults[level];
+    if (!ready) level = 0; // still generating
     this.lodGroups.forEach((g, l) => (g.visible = l === level));
     const moved = dist != null && (this.lodDistance == null || Math.abs(dist - this.lodDistance) > 0.5);
     if (level !== this.activeLod || moved || (dist == null) !== (this.lodDistance == null)) {
@@ -394,7 +410,8 @@ export class Viewer {
     this.camera.updateProjectionMatrix();
     this.controls.target.copy(c);
     this.controls.minDistance = radius * 0.05;
-    this.controls.maxDistance = dist * 6;
+    // far enough to reach the billboard range in the LOD preview
+    this.controls.maxDistance = Math.max(dist * 6, lodRanges(Math.max(0.5, this.bounds.max.y))[IMPOSTOR_LEVEL].begin * 1.6);
     this.controls.update();
     this.framed = true;
   }
@@ -402,6 +419,7 @@ export class Viewer {
   applyMode() {
     const mode = this.view.mode;
     for (const mesh of this.meshes()) {
+      if (mesh.userData.impostor) continue;
       const g = mesh.userData.group;
       const lit = this.getMaterial(g.kind, g.materialId, g.kind === 'leaf' ? 0.85 : 0);
       lit.wireframe = mode === 'wireframe';

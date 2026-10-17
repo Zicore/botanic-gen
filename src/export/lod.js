@@ -10,6 +10,8 @@ const LEVELS = [
 ];
 
 export const LOD_COUNT = LEVELS.length;
+/** Level index of the billboard impostor that follows the mesh LODs. */
+export const IMPOSTOR_LEVEL = LOD_COUNT;
 
 // Thin terminal wood (no branch children, <= 3 sides) is already at the segment floor and
 // can't get any cheaper; at the far LOD it's hidden under the foliage anyway, so drop it.
@@ -45,5 +47,6 @@ export function lodRanges(height) {
     { begin: 0, end: e0 },
     { begin: e0, end: e1 },
     { begin: e1, end: e2 },
+    { begin: e2, end: Infinity }, // impostor
   ];
 }

@@ -3,10 +3,12 @@
 import * as THREE from 'three';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { zipSync, strToU8 } from 'fflate';
-import { engine, generationDoc, bakeAll } from '../state/engine.js';
+import { engine, generationDoc, bakeAll, impostorSettings } from '../state/engine.js';
 import { rgbaToCanvas, canvasToBlob } from '../materials/textures.js';
-import { GODOT_FOLIAGE_SHADER, GODOT_BARK_SHADER } from './godotShaders.js';
-import { lodDocument, lodRanges, LOD_COUNT } from './lod.js';
+import { GODOT_FOLIAGE_SHADER, GODOT_BARK_SHADER, GODOT_IMPOSTOR_SHADER } from './godotShaders.js';
+import { lodDocument, lodRanges, LOD_COUNT, IMPOSTOR_LEVEL } from './lod.js';
+import { bakeImpostor } from '../impostor/impostor.js';
+import { encodePNG } from './png.js';
 
 // ---------------------------------------------------------------------------
 // helpers
@@ -213,6 +215,8 @@ const gdColor = (hex) => {
   return `Color(${s.r.toFixed(4)}, ${s.g.toFixed(4)}, ${s.b.toFixed(4)}, 1)`;
 };
 
+const gdVec3 = (v) => `Vector3(${v.map((x) => x.toFixed(4)).join(', ')})`;
+
 export async function buildGodotPackage(doc) {
   if (!engine.result) throw new Error('Nothing generated yet.');
   ensureTextures(doc);
@@ -257,6 +261,35 @@ export async function buildGodotPackage(doc) {
   // shaders
   files[`${root}shaders/botanica_foliage.gdshader`] = strToU8(GODOT_FOLIAGE_SHADER);
   files[`${root}shaders/botanica_bark.gdshader`] = strToU8(GODOT_BARK_SHADER);
+
+  // billboard impostor (LOD3), baked from LOD0 with the viewport's renderer
+  const imp = impostorSettings(doc);
+  let impostor = null;
+  if (imp.enabled && engine.viewer) {
+    impostor = bakeImpostor(engine.viewer.renderer, engine.result, engine.textures, imp);
+    const isl = slug(base);
+    for (const [map, srgb] of [['albedo', true], ['normal', false]]) {
+      const file = `textures/${isl}_impostor_${map}.png`;
+      files[root + file] = encodePNG(impostor[map], impostor.size, impostor.size);
+      files[`${root + file}.import`] = strToU8(TEXTURE_IMPORT(false, srgb));
+    }
+    files[`${root}shaders/botanica_impostor.gdshader`] = strToU8(GODOT_IMPOSTOR_SHADER);
+    files[`${root}materials/${isl}_impostor.tres`] = strToU8(tres('ShaderMaterial', [
+      { type: 'Shader', path: '../shaders/botanica_impostor.gdshader', id: '1_shader' },
+      { type: 'Texture2D', path: `../textures/${isl}_impostor_albedo.png`, id: '2_albedo' },
+      { type: 'Texture2D', path: `../textures/${isl}_impostor_normal.png`, id: '3_normal' },
+    ], {
+      resource_name: `"${isl}_impostor"`,
+      shader: 'ExtResource("1_shader")',
+      'shader_parameter/albedo_atlas': 'ExtResource("2_albedo")',
+      'shader_parameter/normal_atlas': 'ExtResource("3_normal")',
+      'shader_parameter/frames': impostor.frames.toFixed(1),
+      'shader_parameter/center': gdVec3(impostor.center),
+      'shader_parameter/radius': impostor.radius.toFixed(4),
+      'shader_parameter/alpha_cutoff': imp.alphaCutoff.toFixed(3),
+      'shader_parameter/subsurface_color': gdColor(imp.subsurface),
+    }));
+  }
 
   // materials
   const matPath = new Map();
@@ -307,8 +340,10 @@ export async function buildGodotPackage(doc) {
     matIds.set(m.id, id);
     ext.push({ type: 'Material', path: matPath.get(m.id), id });
   });
-  const tscn = [`[gd_scene load_steps=${ext.length + 1} format=3]`, ''];
+  if (impostor) ext.push({ type: 'Material', path: `materials/${slug(base)}_impostor.tres`, id: 'imp_mat' });
+  const tscn = [`[gd_scene load_steps=${ext.length + (impostor ? 2 : 1)} format=3]`, ''];
   ext.forEach((r) => tscn.push(`[ext_resource type="${r.type}" path="${r.path}" id="${r.id}"]`));
+  if (impostor) tscn.push('', '[sub_resource type="QuadMesh" id="imp_quad"]', 'size = Vector2(2, 2)');
   tscn.push('', `[node name="${base}" instance=ExtResource("1_scene")]`, '');
   for (const mn of meshNames) {
     const r = ranges[mn.lod];
@@ -318,12 +353,29 @@ export async function buildGodotPackage(doc) {
     // hidden one by its margins, so a tree spawned inside the margin band of a LOD boundary
     // would show neither LOD until the camera left the band.
     if (r.begin > 0) tscn.push(`visibility_range_begin = ${r.begin.toFixed(2)}`);
-    if (mn.lod < LOD_COUNT - 1) tscn.push(`visibility_range_end = ${r.end.toFixed(2)}`);
+    if (mn.lod < LOD_COUNT - 1 || impostor) tscn.push(`visibility_range_end = ${r.end.toFixed(2)}`);
     tscn.push('');
+  }
+  if (impostor) {
+    // vertices are placed by the shader, so culling needs the tree's bounding sphere
+    const [cx, cy, cz] = impostor.center;
+    const R = impostor.radius;
+    tscn.push(
+      `[node name="LOD${IMPOSTOR_LEVEL}_Impostor" type="MeshInstance3D" parent="."]`,
+      `custom_aabb = AABB(${(cx - R).toFixed(3)}, ${(cy - R).toFixed(3)}, ${(cz - R).toFixed(3)}, ${(2 * R).toFixed(3)}, ${(2 * R).toFixed(3)}, ${(2 * R).toFixed(3)})`,
+      `visibility_range_begin = ${ranges[IMPOSTOR_LEVEL].begin.toFixed(2)}`,
+      'mesh = SubResource("imp_quad")',
+      'surface_material_override/0 = ExtResource("imp_mat")',
+      '',
+    );
   }
   files[`${root}${base}.tscn`] = strToU8(tscn.join('\n'));
 
-  const stats = results.map((r, i) => `| LOD${i} | ${r.stats.triangles.toLocaleString('en')} | ${r.stats.vertices.toLocaleString('en')} | ${ranges[i].begin.toFixed(0)}–${i < LOD_COUNT - 1 ? ranges[i].end.toFixed(0) : '∞'} m |`).join('\n');
+  const last = impostor ? IMPOSTOR_LEVEL : LOD_COUNT - 1;
+  const range = (i) => `${ranges[i].begin.toFixed(0)}–${i < last ? ranges[i].end.toFixed(0) : '∞'} m`;
+  const rows = results.map((r, i) => `| LOD${i} | ${r.stats.triangles.toLocaleString('en')} | ${r.stats.vertices.toLocaleString('en')} | ${range(i)} |`);
+  if (impostor) rows.push(`| LOD${IMPOSTOR_LEVEL} (billboard, ${impostor.frames}×${impostor.frames} views) | 2 | 4 | ${range(IMPOSTOR_LEVEL)} |`);
+  const stats = rows.join('\n');
   files[`${root}README.md`] = strToU8(readme(base, stats, height));
   files[`${root}${base}.botanica.json`] = strToU8(JSON.stringify(doc, null, 1));
   return { files, base };
@@ -350,7 +402,12 @@ ${stats}
 - \`${base}.tscn\` — inherited scene: assigns the Botanica shader materials and sets
   per-LOD visibility ranges (hard switch, no margins). Godot's \`Self\` fade mode
   blends through transparency, which causes sorting artefacts on foliage, so it is left off.
-- \`materials/*.tres\` — ShaderMaterials (bark + foliage).
+- \`LOD3_Impostor\` — billboard for the far range: a 2×2 QuadMesh with
+  \`botanica_impostor.gdshader\`, which turns it toward the camera (or the light, for shadows)
+  and blends the four nearest of the views baked into \`textures/*_impostor_albedo/normal.png\`
+  (hemi-octahedral atlas, object-space normals so it is lit like the mesh). It casts shadows but
+  does not receive them; \`custom_aabb\` covers the tree because the shader places the vertices.
+- \`materials/*.tres\` — ShaderMaterials (bark, foliage, impostor).
 - \`shaders/\` — \`botanica_foliage.gdshader\` (alpha-tested, double-sided, translucency via
   BACKLIGHT, mip-aware alpha, wind) and \`botanica_bark.gdshader\`.
 - \`textures/\` — albedo (sRGB, alpha), normal (OpenGL/+Y), ORM (AO/Roughness/–),
