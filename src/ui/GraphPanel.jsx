@@ -5,17 +5,20 @@ import {
   Background,
   Controls,
   MiniMap,
-  Handle,
   Position,
   applyNodeChanges,
   useReactFlow,
 } from '@xyflow/react';
+import * as FlowComponents from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Plus, LayoutGrid, Maximize, Eye, EyeOff } from 'lucide-react';
 import { useStore } from '../state/store.js';
 import { NODE_TYPES } from '../tree/schema.js';
 import { canParent, isDescendant } from '../tree/document.js';
 import { NodeIcon } from './icons.jsx';
+
+// Namespace access avoids the package's Handle value/type re-export collision.
+const { Handle } = FlowComponents;
 
 const CHILD_TYPES = Object.keys(NODE_TYPES).filter((t) => !NODE_TYPES[t].singleton);
 const canHaveChildren = (type) => CHILD_TYPES.some((t) => NODE_TYPES[t].accepts.includes(type));
@@ -35,7 +38,9 @@ function summary(node, materials) {
   }
 }
 
-const GenNode = memo(function GenNode({ data, selected }) {
+/** @typedef {import('@xyflow/react').Node<{ node: ReturnType<typeof import('../tree/document.js').makeNode>, text: string }>} GeneratorFlowNode */
+
+const GenNode = memo(/** @param {import('@xyflow/react').NodeProps<GeneratorFlowNode>} props */ function GenNode({ data, selected }) {
   const { node, text } = data;
   const def = NODE_TYPES[node.type];
   return (
@@ -326,7 +331,7 @@ function Graph() {
       >
         <Background gap={18} size={1.2} color="#2a3038" />
         <Controls showInteractive={false} position="bottom-left" />
-        <MiniMap pannable zoomable position="bottom-right" nodeColor={(n) => NODE_TYPES[n.data.node.type].color} maskColor="rgba(10,12,15,0.7)" style={{ width: 120, height: 80 }} />
+        <MiniMap pannable zoomable position="bottom-right" nodeColor={/** @param {GeneratorFlowNode} n */ (n) => NODE_TYPES[n.data.node.type].color} maskColor="rgba(10,12,15,0.7)" style={{ width: 120, height: 80 }} />
       </ReactFlow>
       {menu && <Menu menu={menu} onClose={() => setMenu(null)} />}
     </div>

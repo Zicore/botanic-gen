@@ -156,6 +156,7 @@ export async function exportGLB(doc) {
 export async function exportTexturesZip(doc) {
   ensureTextures(doc);
   const names = uniqueSlugs(doc.materials);
+  /** @type {import('fflate').Zippable} */
   const files = {};
   for (const m of doc.materials) {
     const t = engine.textures.get(m.id);
@@ -223,6 +224,7 @@ export async function buildGodotPackage(doc) {
   const base = pascal(doc.name);
   const root = `${base}/`;
   const names = uniqueSlugs(doc.materials);
+  /** @type {import('fflate').Zippable} */
   const files = {};
 
   // LODs (LOD0 = what is on screen)

@@ -44,7 +44,7 @@ export function impostorSettings(doc) {
  */
 export function scheduleImpostor() {
   clearTimeout(engine.impostorTimer);
-  engine.impostorTimer = setTimeout(() => {
+  engine.impostorTimer = window.setTimeout(() => {
     const { doc, view } = useStore.getState();
     const s = impostorSettings(doc);
     if ((view.lod !== IMPOSTOR_LEVEL && view.lod !== 'auto') || !s.enabled || !engine.result?.bounds || !engine.viewer) {

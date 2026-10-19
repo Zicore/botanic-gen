@@ -33,12 +33,14 @@ function makeCanvas(size, fill = '#000') {
 /** Maps leaf space (x in [-a/2, a/2], y in [0, 1], y up) into a cell, in canvas pixels. */
 function cellMapper(cell, aspect, size) {
   return {
+    /** @returns {[number, number]} */
     P: (x, y) => [(cell.u0 + (x / aspect + 0.5) * (cell.u1 - cell.u0)) * size, (cell.v1 - y * (cell.v1 - cell.v0)) * size],
     unit: (cell.v1 - cell.v0) * size, // pixels per leaf-space unit
   };
 }
 
 /** Child mapper: translate to (ox, oy), rotate by ang (counter-clockwise), scale by sc. */
+/** @param {ReturnType<typeof cellMapper>} map */
 function subMapper(map, ox, oy, ang, sc) {
   const c = Math.cos(ang), s = Math.sin(ang);
   return { P: (x, y) => map.P(ox + (x * c - y * s) * sc, oy + (x * s + y * c) * sc), unit: map.unit * sc };
@@ -85,6 +87,7 @@ function woodStroke(layers, pts, w0, w1) {
 }
 
 /** Register a new opaque shape on top of everything drawn so far. */
+/** @param {ReturnType<typeof cellMapper>} map */
 function stackShape(layers, path, map, tintValue, shadow = 1) {
   const o = layers.occl.ctx;
   o.save();
@@ -111,6 +114,7 @@ function stackShape(layers, path, map, tintValue, shadow = 1) {
 const clamp255 = (x) => Math.min(255, Math.max(0, x));
 
 /** One leaf blade with petiole and veins. */
+/** @param {ReturnType<typeof cellMapper>} map */
 function drawBroadleaf(layers, map, p, aspect, rng) {
   const pet = p.petiole;
   const bladeLen = 1 - pet - 0.01;
@@ -219,6 +223,7 @@ function drawBroadleaf(layers, map, p, aspect, rng) {
 }
 
 /** A twig carrying several leaves: the cluster cards real-time trees are built from. */
+/** @param {ReturnType<typeof cellMapper>} map */
 function drawTwig(layers, map, p, aspect, rng) {
   const leafAsp = leafAspect({ ...p, kind: 'broadleaf' });
   const spread = (p.twigSpread * Math.PI) / 180;
@@ -267,6 +272,7 @@ function drawTwig(layers, map, p, aspect, rng) {
  * A rounded mass of many small leaves on a fan of twigs: one card stands in for a whole
  * leafy sub-branch, which is how low-poly crowns stay closed with a few hundred quads.
  */
+/** @param {ReturnType<typeof cellMapper>} map */
 function drawClump(layers, map, p, aspect, rng) {
   const leafAsp = leafAspect({ ...p, kind: 'broadleaf' });
   const L = p.clumpLeafSize;
@@ -308,6 +314,7 @@ function drawClump(layers, map, p, aspect, rng) {
   for (const lf of leaves) drawBroadleaf(layers, subMapper(map, lf.x, lf.y, lf.ang, lf.size), p, leafAsp, rng);
 }
 
+/** @param {ReturnType<typeof cellMapper>} map */
 function drawNeedleShoot(layers, map, p, rng, origin, dir, length, scale, depth) {
   const bend = rng.signed() * 0.08;
   const nx = -dir[1], ny = dir[0];
@@ -362,10 +369,12 @@ function drawNeedleShoot(layers, map, p, rng, origin, dir, length, scale, depth)
   }
 }
 
+/** @param {ReturnType<typeof cellMapper>} map */
 function drawNeedles(layers, map, p, aspect, rng) {
   drawNeedleShoot(layers, map, p, rng, [0, 0.01], [0, 1], 0.97, 1, 0);
 }
 
+/** @param {ReturnType<typeof cellMapper>} map */
 function drawFrond(layers, map, p, aspect, rng) {
   const toPx = (q) => map.P(q[0], q[1]);
   const rachis = [];
@@ -418,6 +427,7 @@ function drawFrond(layers, map, p, aspect, rng) {
   }
 }
 
+/** @param {ReturnType<typeof cellMapper>} map */
 function drawBlades(layers, map, p, aspect, rng) {
   const toPx = (q) => map.P(q[0], q[1]);
   const n = Math.max(1, p.blades);

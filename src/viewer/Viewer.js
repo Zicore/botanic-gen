@@ -104,6 +104,8 @@ export class Viewer {
     this.onLod = null;
     this.skeleton = null;
 
+    /** @type {THREE.MeshDepthMaterial | null} */
+    this.barkDepth = null;
     this.materials = new Map(); // key -> material
     this.textures = new Map(); // materialId -> { maps, version, params }
     this.view = { mode: 'lit', wind: 0.35, windDir: 20, skeleton: false, ground: true };
@@ -283,12 +285,14 @@ export class Viewer {
   }
 
   *meshes() {
-    for (const g of this.lodGroups) yield* g.children;
+    for (const g of this.lodGroups) {
+      for (const child of g.children) if (child instanceof THREE.Mesh) yield child;
+    }
   }
 
   fillGroup(group, result) {
     for (const child of [...group.children]) {
-      child.geometry.dispose();
+      if (child instanceof THREE.Mesh) child.geometry.dispose();
       group.remove(child);
     }
     for (const g of result?.groups || []) {
@@ -326,7 +330,7 @@ export class Viewer {
   setImpostor(bake, opts) {
     const group = this.lodGroups[IMPOSTOR_LEVEL];
     for (const child of [...group.children]) {
-      child.geometry.dispose();
+      if (child instanceof THREE.Mesh) child.geometry.dispose();
       child.userData.dispose?.();
       group.remove(child);
     }

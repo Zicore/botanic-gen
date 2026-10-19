@@ -72,7 +72,7 @@ export function CurveEditor({ points, onChange, axis }) {
         ref={svg}
         viewBox={`0 0 ${W} ${H}`}
         className="curve-svg"
-        onDoubleClick={(e) => e.target === svg.current || e.target.dataset.bg ? add(e) : null}
+        onDoubleClick={(e) => e.target === svg.current || (e.target instanceof SVGElement && e.target.dataset.bg) ? add(e) : null}
         onPointerMove={(e) => drag != null && update(drag, fromEvent(e))}
         onPointerUp={() => setDrag(null)}
         onPointerLeave={() => setDrag(null)}

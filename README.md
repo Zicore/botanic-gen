@@ -105,8 +105,12 @@ npm run dev
 ## Build
 
 ```bash
+npm run typecheck
 npm run build
 ```
+
+The typecheck checks JavaScript and JSX with TypeScript (`checkJs`, no emitted files).
+It uses JSDoc and library types; strict mode is disabled for the existing JavaScript codebase.
 
 ## Project layout
 

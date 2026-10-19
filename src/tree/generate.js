@@ -78,6 +78,10 @@ class Spine {
     this.flexGain = 0;
     this.seed = 0;
     this.material = null;
+    this.sink = 0;
+    /** @type {Vector3 | null} */
+    this.phiFrame = null;
+    this.leafMaterial = null;
     this.parentRadius = 0; // parent radius at attachment, for collar + crotch AO
   }
 
@@ -191,7 +195,10 @@ function growSpine(spine, o) {
   spine.rad = spine.s.map((s) => o.radiusAt(spine.length > 0 ? s / spine.length : 0, s));
 }
 
-/** Child positions along a parent spine: [{ t, phi }]. */
+/**
+ * Child positions along a parent spine.
+ * @returns {{ t: number, phi: number, tip?: boolean }[]}
+ */
 function spawnPositions(P, parentLength, refLength, rng) {
   let count = P.count * (P.countByLength && refLength > 0 ? parentLength / refLength : 1);
   let n = rng.round(Math.max(0, count));
@@ -504,7 +511,7 @@ export function generateTree(doc) {
   if (leavesCapped) warnings.push(`Leaf limit reached (${MAX_LEAVES}). Reduce counts.`);
 
   // ---- post: canopy normals, AO, flex normalization
-  const result = finalize([...builders.values()], G, nodes);
+  const result = finalize([...builders.values()], G);
   result.stats.spines = spineCount + [...spinesByNode.values()].reduce((a, s) => a + (s[0]?.node.type === 'trunk' ? s.length : 0), 0);
   result.stats.leaves = leafCount;
   result.stats.ms = Math.round(performance.now() - t0);

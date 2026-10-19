@@ -6,7 +6,7 @@ const decimals = (step) => (step >= 1 ? 0 : Math.min(4, Math.ceil(-Math.log10(st
  * Slider + scrubbable numeric field. Drag horizontally on the value to scrub
  * (Shift = fine, Ctrl = coarse); click to type. Double-click the label to reset.
  */
-export function NumberField({ label, value, min, max, step = 0.01, onChange, onReset, hint, suffix, softMax }) {
+export function NumberField({ label, value, min, max, step = 0.01, onChange, onReset = undefined, hint = undefined, suffix = undefined, softMax = undefined }) {
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState('');
   const drag = useRef(null);

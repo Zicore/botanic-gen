@@ -10,7 +10,7 @@ self.onmessage = (e) => {
       for (const a of Object.values(g.attributes)) if (!transfer.includes(a.buffer)) transfer.push(a.buffer);
       transfer.push(g.index.buffer);
     }
-    self.postMessage({ id, result }, transfer);
+    self.postMessage({ id, result }, { transfer });
   } catch (err) {
     self.postMessage({ id, error: String(err?.stack || err) });
   }
