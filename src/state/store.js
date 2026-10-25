@@ -63,6 +63,9 @@ export const useStore = create((set, get) => {
     lastTime: 0,
     selection: { type: 'node', id: initialDoc.nodes.find((n) => n.type === 'trunk')?.id ?? 'tree' },
     leftTab: 'graph',
+    mobilePanel: null, // null | 'graph' | 'materials' | 'inspector'
+    leftOpen: true,
+    rightOpen: true,
     view: {
       mode: 'lit', // lit | albedo | ao | wind | wireframe
       wind: 0.35,
@@ -207,7 +210,7 @@ export const useStore = create((set, get) => {
       const { doc } = get();
       const m = makeMaterial(kind, kind === 'bark' ? 'New Bark' : 'New Leaf');
       commit({ ...doc, materials: [...doc.materials, m] });
-      set({ selection: { type: 'material', id: m.id }, leftTab: 'materials' });
+      set({ selection: { type: 'material', id: m.id }, leftTab: 'materials', mobilePanel: 'inspector' });
     },
     duplicateMaterial(id) {
       const { doc } = get();
@@ -239,8 +242,20 @@ export const useStore = create((set, get) => {
     select(selection) {
       set({ selection });
     },
+    setMobilePanel(mobilePanel) {
+      set((s) => ({
+        mobilePanel,
+        leftTab: mobilePanel === 'graph' || mobilePanel === 'materials' ? mobilePanel : s.leftTab,
+      }));
+    },
+    toggleLeft() {
+      set((s) => ({ leftOpen: !s.leftOpen }));
+    },
+    toggleRight() {
+      set((s) => ({ rightOpen: !s.rightOpen }));
+    },
     setLeftTab(leftTab) {
-      set({ leftTab });
+      set({ leftTab, mobilePanel: leftTab });
     },
     setView(patch) {
       set({ view: { ...get().view, ...patch } });

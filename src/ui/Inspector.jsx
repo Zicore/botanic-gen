@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
-import { ChevronDown, Copy, Trash2, Eye, EyeOff, Spline, PencilLine } from 'lucide-react';
+import { ChevronDown, Copy, Trash2, Eye, EyeOff, Spline, PencilLine, PanelRightClose } from 'lucide-react';
 import { useStore } from '../state/store.js';
 import { engine } from '../state/engine.js';
 import { NODE_TYPES, MATERIAL_TYPES, allParams, isVisible, nodeDefaults, materialDefaults } from '../tree/schema.js';
@@ -10,21 +10,66 @@ import { CurveEditor } from './controls/CurveEditor.jsx';
 import { ColorField } from './controls/ColorField.jsx';
 import { NodeIcon } from './icons.jsx';
 
-export function Inspector() {
+/** @param {{ onCollapse?: () => void }} props */
+export function Inspector({ onCollapse } = {}) {
   const selection = useStore((s) => s.selection);
   const doc = useStore((s) => s.doc);
   if (selection?.type === 'material') {
     const m = doc.materials.find((x) => x.id === selection.id);
-    if (m) return <MaterialInspector material={m} />;
+    if (m) return <MaterialInspector material={m} onCollapse={onCollapse} />;
   }
   const node = doc.nodes.find((n) => n.id === selection?.id) ?? doc.nodes.find((n) => n.type === 'tree');
   if (!node) return <div className="inspector-empty">Nothing selected</div>;
-  return <NodeInspector node={node} />;
+  return <NodeInspector node={node} onCollapse={onCollapse} />;
+}
+
+function InspectorSwitcher() {
+  const nodes = useStore((s) => s.doc.nodes);
+  const materials = useStore((s) => s.doc.materials);
+  const selection = useStore((s) => s.selection);
+  const { select } = useStore.getState();
+
+  return (
+    <div className="insp-switcher" aria-label="Quick select node or material">
+      {nodes.map((n) => {
+        const def = NODE_TYPES[n.type];
+        const active = selection?.type === 'node' && selection.id === n.id;
+        return (
+          <button
+            key={n.id}
+            className={`insp-chip ${active ? 'active' : ''} ${n.enabled ? '' : 'off'}`}
+            style={{ '--c': def.color }}
+            onClick={() => select({ type: 'node', id: n.id })}
+            title={`${n.name} (${def.label})`}
+          >
+            <span className="insp-chip-dot" />
+            <span>{n.name}</span>
+          </button>
+        );
+      })}
+      {materials.map((m) => {
+        const active = selection?.type === 'material' && selection.id === m.id;
+        const c = m.kind === 'bark' ? '#b45309' : '#16a34a';
+        return (
+          <button
+            key={m.id}
+            className={`insp-chip mat ${active ? 'active' : ''}`}
+            style={{ '--c': c }}
+            onClick={() => select({ type: 'material', id: m.id })}
+            title={`${m.name} (${m.kind} material)`}
+          >
+            <span className="insp-chip-dot" />
+            <span>{m.name}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
 
-function NodeInspector({ node }) {
+function NodeInspector({ node, onCollapse }) {
   const def = NODE_TYPES[node.type];
   const { setNodeParam, setNodeProps, deleteNodes, duplicateNode } = useStore.getState();
   const defaults = useMemo(() => nodeDefaults(node.type), [node.type]);
@@ -32,6 +77,7 @@ function NodeInspector({ node }) {
 
   return (
     <div className="inspector">
+      <InspectorSwitcher />
       <div className="insp-head">
         <div className="insp-icon" style={{ '--c': def.color }}>
           <NodeIcon type={node.type} size={16} />
@@ -43,19 +89,26 @@ function NodeInspector({ node }) {
             {parent ? <> · child of <b>{parent.name}</b></> : node.type !== 'tree' ? <span className="warn"> · not connected</span> : null}
           </div>
         </div>
-        {!def.singleton && (
-          <div className="insp-actions">
-            <button className="icon-btn" title={node.enabled ? 'Disable' : 'Enable'} onClick={() => setNodeProps(node.id, { enabled: !node.enabled })}>
-              {node.enabled ? <Eye size={15} /> : <EyeOff size={15} />}
+        <div className="insp-actions">
+          {!def.singleton && (
+            <>
+              <button className="icon-btn" title={node.enabled ? 'Disable' : 'Enable'} onClick={() => setNodeProps(node.id, { enabled: !node.enabled })}>
+                {node.enabled ? <Eye size={15} /> : <EyeOff size={15} />}
+              </button>
+              <button className="icon-btn" title="Duplicate with children (Ctrl+D)" onClick={() => duplicateNode(node.id)}>
+                <Copy size={15} />
+              </button>
+              <button className="icon-btn danger" title="Delete (Del)" onClick={() => deleteNodes([node.id])}>
+                <Trash2 size={15} />
+              </button>
+            </>
+          )}
+          {onCollapse && (
+            <button className="icon-btn" title="Hide inspector panel" onClick={onCollapse}>
+              <PanelRightClose size={15} />
             </button>
-            <button className="icon-btn" title="Duplicate with children (Ctrl+D)" onClick={() => duplicateNode(node.id)}>
-              <Copy size={15} />
-            </button>
-            <button className="icon-btn danger" title="Delete (Del)" onClick={() => deleteNodes([node.id])}>
-              <Trash2 size={15} />
-            </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
       <p className="insp-desc">{def.description}</p>
       <ParamGroups
@@ -86,7 +139,7 @@ const MAP_TABS = {
   leaf: [['albedo', 'Albedo'], ['normal', 'Normal'], ['orm', 'ORM'], ['translucency', 'Transl.']],
 };
 
-function MaterialInspector({ material }) {
+function MaterialInspector({ material, onCollapse }) {
   const def = MATERIAL_TYPES[material.kind];
   const { setMaterialParam, renameMaterial, duplicateMaterial, deleteMaterial } = useStore.getState();
   const defaults = useMemo(() => materialDefaults(material.kind), [material.kind]);
@@ -103,6 +156,7 @@ function MaterialInspector({ material }) {
 
   return (
     <div className="inspector">
+      <InspectorSwitcher />
       <div className="insp-head">
         <div className="insp-icon" style={{ '--c': material.kind === 'bark' ? '#b45309' : '#16a34a' }}>
           <NodeIcon type={material.kind === 'bark' ? 'bark' : 'leaf'} size={16} />
@@ -120,6 +174,11 @@ function MaterialInspector({ material }) {
           <button className="icon-btn danger" title="Delete" onClick={() => deleteMaterial(material.id)}>
             <Trash2 size={15} />
           </button>
+          {onCollapse && (
+            <button className="icon-btn" title="Hide inspector panel" onClick={onCollapse}>
+              <PanelRightClose size={15} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -243,7 +302,7 @@ function Param({ p, value, onChange, reset }) {
 function MaterialParam({ p, value, onChange }) {
   const all = useStore((s) => s.doc.materials);
   const materials = useMemo(() => all.filter((m) => m.kind === p.materialKind), [all, p.materialKind]);
-  const { select, setLeftTab, addMaterial } = useStore.getState();
+  const { select, setLeftTab, addMaterial, setMobilePanel } = useStore.getState();
   return (
     <div className="field">
       <label className="field-label" title={p.hint}>{p.label}</label>
@@ -261,7 +320,11 @@ function MaterialParam({ p, value, onChange }) {
             if (value) {
               select({ type: 'material', id: value });
               setLeftTab('materials');
-            } else addMaterial(p.materialKind);
+              setMobilePanel('inspector');
+            } else {
+              addMaterial(p.materialKind);
+              setMobilePanel('inspector');
+            }
           }}
         >
           <PencilLine size={14} />

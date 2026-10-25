@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Undo2, Redo2, Dices, Download, ChevronDown, FolderOpen, Save, Package, Box, Image as ImageIcon, Sprout } from 'lucide-react';
+import { Undo2, Redo2, Dices, Download, ChevronDown, FolderOpen, Save, Package, Box, Image as ImageIcon, Sprout, Trees } from 'lucide-react';
 import { useStore, treeSeed } from '../state/store.js';
 import { PRESETS } from '../tree/presets.js';
 import { exportGLB, exportGodotPackage, exportTexturesZip, saveProject, loadProjectFile } from '../export/exporters.js';
@@ -17,7 +17,7 @@ function Dropdown({ label, icon, children, align = 'left', className = '' }) {
     <div className={`dropdown ${className}`} ref={ref}>
       <button className="tb-btn" onClick={() => setOpen(!open)}>
         {icon}
-        {label}
+        <span className="tb-label">{label}</span>
         <ChevronDown size={13} className="dim" />
       </button>
       {open && (
@@ -55,14 +55,14 @@ export function TopBar() {
     <header className="topbar">
       <div className="brand">
         <div className="brand-mark"><Sprout size={16} /></div>
-        <div>
+        <div className="brand-text">
           <div className="brand-name">Botanica</div>
           <div className="brand-sub">Procedural foliage studio</div>
         </div>
       </div>
 
       <div className="tb-group">
-        <Dropdown label="Species" icon={null}>
+        <Dropdown label="Species" icon={<Trees size={14} />}>
           <div className="dd-title">Load preset (undoable)</div>
           {Object.entries(PRESETS).filter(([, p]) => !p.group).map(([k, p]) => (
             <button key={k} className="dd-item" onClick={() => loadPreset(k)}>{p.label}</button>
@@ -77,7 +77,7 @@ export function TopBar() {
 
       <div className="tb-group">
         <div className="seed">
-          <span className="dim">Seed</span>
+          <span className="dim seed-label">Seed</span>
           <input
             type="number"
             value={seed}
@@ -95,6 +95,16 @@ export function TopBar() {
 
       <div className="tb-group">
         <Dropdown label="Project" icon={<FolderOpen size={14} />} align="right">
+          <div className="dd-title">Tree name</div>
+          <div className="dd-input-wrap" onClick={(e) => e.stopPropagation()}>
+            <input
+              className="dd-doc-name"
+              value={doc.name}
+              onChange={(e) => renameDocument(e.target.value)}
+              spellCheck={false}
+            />
+          </div>
+          <div className="dd-title">Project file</div>
           <button className="dd-item" onClick={() => saveProject(doc)}><Save size={14} /> Save project (.json)</button>
           <button className="dd-item" onClick={() => fileRef.current?.click()}><FolderOpen size={14} /> Open project…</button>
         </Dropdown>

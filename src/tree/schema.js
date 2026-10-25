@@ -173,6 +173,7 @@ export const NODE_TYPES = {
           f('gravity', 'Gravity', 0.2, -1, 3),
           c('gravityCurve', 'Gravity profile', 'gravity', CURVES.easeIn, 'own'),
           f('upAttraction', 'Up attraction', 0.25, 0, 3),
+          f('outward', 'Crown spread', 0.15, 0, 2, 0.01, { hint: 'Push growth radially away from the tree axis (phototropism) for fuller crowns.' }),
           f('flatten', 'Flatten', 0, 0, 1, 0.01, { hint: 'Pull growth toward the horizontal plane (spruce, beech fans).' }),
           f('gnarl', 'Gnarl', 0.35, 0, 3),
           f('gnarlScale', 'Gnarl frequency', 0.8, 0.02, 8, 0.01),
@@ -231,7 +232,7 @@ export const NODE_TYPES = {
         name: 'Mesh',
         params: [
           i('widthSegments', 'Width segments', 2, 1, 6),
-          i('lengthSegments', 'Length segments', 3, 1, 10),
+          i('lengthSegments', 'Length segments', 2, 1, 10),
         ],
       },
       {

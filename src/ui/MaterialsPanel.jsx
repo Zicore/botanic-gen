@@ -18,7 +18,7 @@ export function MaterialsPanel() {
   const materials = useStore((s) => s.doc.materials);
   const nodes = useStore((s) => s.doc.nodes);
   const selection = useStore((s) => s.selection);
-  const { select, addMaterial } = useStore.getState();
+  const { select, addMaterial, setMobilePanel } = useStore.getState();
   useSyncExternalStore(
     (cb) => {
       engine.listeners.add(cb);
@@ -37,7 +37,13 @@ export function MaterialsPanel() {
     <div className="mat-section">
       <div className="mat-section-head">
         <span>{title}</span>
-        <button className="tb-btn" onClick={() => addMaterial(kind)}>
+        <button
+          className="tb-btn"
+          onClick={() => {
+            addMaterial(kind);
+            setMobilePanel('inspector');
+          }}
+        >
           <Plus size={13} /> New
         </button>
       </div>
@@ -46,7 +52,10 @@ export function MaterialsPanel() {
           <button
             key={m.id}
             className={`mat-item ${selection?.type === 'material' && selection.id === m.id ? 'sel' : ''}`}
-            onClick={() => select({ type: 'material', id: m.id })}
+            onClick={() => {
+              select({ type: 'material', id: m.id });
+              setMobilePanel('inspector');
+            }}
           >
             <div className={`mat-thumb ${kind === 'leaf' ? 'checker' : ''}`}>{thumb(m.id) && <img src={thumb(m.id)} alt="" />}</div>
             <div className="mat-info">

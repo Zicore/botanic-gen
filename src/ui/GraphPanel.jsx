@@ -11,7 +11,7 @@ import {
 } from '@xyflow/react';
 import * as FlowComponents from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Plus, LayoutGrid, Maximize, Eye, EyeOff } from 'lucide-react';
+import { Plus, LayoutGrid, Maximize, Eye, EyeOff, MoreHorizontal, SlidersHorizontal } from 'lucide-react';
 import { useStore } from '../state/store.js';
 import { NODE_TYPES } from '../tree/schema.js';
 import { canParent, isDescendant } from '../tree/document.js';
@@ -70,7 +70,7 @@ const GenNode = memo(/** @param {import('@xyflow/react').NodeProps<GeneratorFlow
 
 const nodeTypes = { gen: GenNode };
 
-function Menu({ menu, onClose }) {
+function Menu({ menu, onClose, boundsRef }) {
   const ref = useRef(null);
   useEffect(() => {
     const close = (e) => ref.current && !ref.current.contains(e.target) && onClose();
@@ -82,8 +82,15 @@ function Menu({ menu, onClose }) {
       window.removeEventListener('keydown', esc);
     };
   }, [onClose]);
+
+  const b = boundsRef?.current?.getBoundingClientRect();
+  const maxX = b ? Math.max(8, b.width - 204) : menu.x;
+  const maxY = b ? Math.max(8, b.height - 230) : menu.y;
+  const x = Math.max(8, Math.min(menu.x, maxX));
+  const y = Math.max(8, Math.min(menu.y, maxY));
+
   return (
-    <div ref={ref} className="ctx-menu" style={{ left: menu.x, top: menu.y }}>
+    <div ref={ref} className="ctx-menu" style={{ left: x, top: y }}>
       {menu.title && <div className="ctx-title">{menu.title}</div>}
       {menu.items.map((it, i) =>
         it.sep ? (
@@ -216,6 +223,47 @@ function Graph() {
     [doc.nodes, rf, store],
   );
 
+  const openNodeMenu = useCallback(
+    (clientX, clientY, node) => {
+      if (!node) return;
+      const def = NODE_TYPES[node.type];
+      const rect = wrap.current.getBoundingClientRect();
+      const childTypes = CHILD_TYPES.filter((t) => canParent(t, node.type));
+      store.select({ type: 'node', id: node.id });
+      setMenu({
+        x: clientX - rect.left,
+        y: clientY - rect.top,
+        title: node.name,
+        items: [
+          {
+            label: 'Inspect parameters',
+            icon: <SlidersHorizontal size={13} />,
+            run: () => store.setMobilePanel('inspector'),
+          },
+          ...(childTypes.length ? [{ sep: true }] : []),
+          ...childTypes.map((t) => ({
+            label: `Add ${NODE_TYPES[t].label}`,
+            icon: <NodeIcon type={t} size={13} />,
+            color: NODE_TYPES[t].color,
+            run: () => store.addNode(t, node.id),
+          })),
+          ...(!def.singleton
+            ? [
+                { sep: true },
+                { label: node.enabled ? 'Disable' : 'Enable', run: () => store.setNodeProps(node.id, { enabled: !node.enabled }) },
+                { label: 'Duplicate with children', kbd: 'Ctrl+D', run: () => store.duplicateNode(node.id) },
+                { label: 'Duplicate node only', run: () => store.duplicateNode(node.id, false) },
+                ...(node.parent ? [{ label: 'Disconnect from parent', run: () => store.disconnect(node.id) }] : []),
+                { sep: true },
+                { label: 'Delete', kbd: 'Del', danger: true, run: () => store.deleteNodes([node.id]) },
+              ]
+            : []),
+        ],
+      });
+    },
+    [store],
+  );
+
   const onConnectEnd = useCallback(
     (event, state) => {
       if (state.isValid || !state.fromNode || state.fromHandle?.type !== 'source') return;
@@ -229,36 +277,9 @@ function Graph() {
     (e, rfNode) => {
       e.preventDefault();
       const node = doc.nodes.find((n) => n.id === rfNode.id);
-      const def = NODE_TYPES[node.type];
-      const rect = wrap.current.getBoundingClientRect();
-      const childTypes = CHILD_TYPES.filter((t) => canParent(t, node.type));
-      store.select({ type: 'node', id: node.id });
-      setMenu({
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
-        title: node.name,
-        items: [
-          ...childTypes.map((t) => ({
-            label: `Add ${NODE_TYPES[t].label}`,
-            icon: <NodeIcon type={t} size={13} />,
-            color: NODE_TYPES[t].color,
-            run: () => store.addNode(t, node.id),
-          })),
-          ...(childTypes.length ? [{ sep: true }] : []),
-          ...(!def.singleton
-            ? [
-                { label: node.enabled ? 'Disable' : 'Enable', run: () => store.setNodeProps(node.id, { enabled: !node.enabled }) },
-                { label: 'Duplicate with children', kbd: 'Ctrl+D', run: () => store.duplicateNode(node.id) },
-                { label: 'Duplicate node only', run: () => store.duplicateNode(node.id, false) },
-                ...(node.parent ? [{ label: 'Disconnect from parent', run: () => store.disconnect(node.id) }] : []),
-                { sep: true },
-                { label: 'Delete', kbd: 'Del', danger: true, run: () => store.deleteNodes([node.id]) },
-              ]
-            : []),
-        ],
-      });
+      openNodeMenu(e.clientX, e.clientY, node);
     },
-    [doc.nodes, store],
+    [doc.nodes, openNodeMenu],
   );
 
   const onPaneContextMenu = useCallback(
@@ -283,7 +304,7 @@ function Graph() {
     [store],
   );
 
-  const selectedNode = selection?.type === 'node' ? doc.nodes.find((n) => n.id === selection.id) : null;
+  const selectedNode = selection?.type === 'node' ? doc.nodes.find((n) => n.id === selection.id) : doc.nodes.find((n) => n.type === 'tree');
 
   return (
     <div className="graph" ref={wrap}>
@@ -298,13 +319,34 @@ function Graph() {
         >
           <Plus size={14} /> Add
         </button>
+        {selectedNode && (
+          <>
+            <button
+              className="tb-btn"
+              title="Node actions (duplicate, disconnect, delete)"
+              onClick={(e) => {
+                const r = e.currentTarget.getBoundingClientRect();
+                openNodeMenu(r.left, r.bottom + 4, selectedNode);
+              }}
+            >
+              <MoreHorizontal size={14} /> Actions
+            </button>
+            <button
+              className="tb-btn mobile-only-inline"
+              title="Edit selected node parameters"
+              onClick={() => store.setMobilePanel('inspector')}
+            >
+              <SlidersHorizontal size={13} /> Inspect
+            </button>
+          </>
+        )}
         <button className="tb-btn" title="Tidy layout" onClick={() => { store.tidyLayout(); setTimeout(() => rf.fitView({ padding: 0.2, duration: 300 }), 30); }}>
           <LayoutGrid size={14} /> Tidy
         </button>
         <button className="tb-btn" title="Fit view" onClick={() => rf.fitView({ padding: 0.2, duration: 300 })}>
           <Maximize size={14} />
         </button>
-        <span className="tb-hint">Right-click to add · drag from ● to spawn a child</span>
+        <span className="tb-hint">Right-click or Actions · drag ● to spawn child</span>
       </div>
       <ReactFlow
         nodes={rfNodes}
@@ -333,7 +375,7 @@ function Graph() {
         <Controls showInteractive={false} position="bottom-left" />
         <MiniMap pannable zoomable position="bottom-right" nodeColor={/** @param {GeneratorFlowNode} n */ (n) => NODE_TYPES[n.data.node.type].color} maskColor="rgba(10,12,15,0.7)" style={{ width: 120, height: 80 }} />
       </ReactFlow>
-      {menu && <Menu menu={menu} onClose={() => setMenu(null)} />}
+      {menu && <Menu menu={menu} onClose={() => setMenu(null)} boundsRef={wrap} />}
     </div>
   );
 }

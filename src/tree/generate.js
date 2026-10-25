@@ -173,8 +173,12 @@ function growSpine(spine, o) {
   const inv = 1 / n;
   for (let i = 0; i < n; i++) {
     const t = i * inv;
-    if (o.gravity) d.addScaledVector(DOWN, o.gravity * o.gravityCurve(t) * inv * 1.6);
+    if (o.gravity) d.addScaledVector(DOWN, o.gravity * (0.18 + 0.82 * o.gravityCurve(t)) * inv * 1.6);
     if (o.upAttraction) d.addScaledVector(UP, o.upAttraction * inv);
+    if (o.outward) {
+      horiz.set(p.x, 0, p.z);
+      if (horiz.lengthSq() > 1e-4) d.addScaledVector(horiz.normalize(), o.outward * (1 - 0.35 * t) * inv);
+    }
     if (o.flatten) {
       horiz.set(d.x, 0, d.z);
       if (horiz.lengthSq() > 1e-6) d.lerp(horiz.normalize(), Math.min(1, o.flatten * inv * 3));
@@ -395,8 +399,17 @@ export function generateTree(doc) {
             const baseR = Math.min(parentR * P.radiusRatio, parentR * 0.92);
             const collarLen = parentR * 2.5;
             radiusAt = (t, s) => {
-              const collar = s < collarLen ? 1 + P.collar * (1 - s / collarLen) ** 2 : 1;
-              return Math.max(baseR * radiusCurve(t), 0.0006 * scale) * collar;
+              const r0 = Math.max(baseR * radiusCurve(t), 0.0006 * scale);
+              if (s >= collarLen || P.collar <= 0) return r0;
+              const surfS = parentR * 0.55;
+              if (s < surfS) {
+                const insideR = Math.min(r0, parentR * 0.82);
+                const peakR = Math.min(r0 * (1 + P.collar * 0.85), parentR * 0.96);
+                return insideR + (peakR - insideR) * smoothstep(0, surfS, s);
+              }
+              const fall = 1 - (s - surfS) / Math.max(collarLen - surfS, 1e-6);
+              return r0 * (1 + P.collar * 0.85 * fall * fall);
+
             };
           }
 
@@ -408,6 +421,7 @@ export function generateTree(doc) {
             gravity: P.gravity,
             gravityCurve,
             upAttraction: P.upAttraction,
+            outward: isFrond ? 0 : (P.outward ?? 0),
             flatten: P.flatten || 0,
             gnarl: P.gnarl,
             gnarlScale: (P.gnarlScale ?? 0.8) / scale,
@@ -584,7 +598,25 @@ function decimateSpine(spine, q) {
   const n = spine.pts.length;
   const segs = Math.min(n - 1, Math.max(2, Math.round((n - 1) * q)));
   if (segs >= n - 1) return spine;
-  const idx = Array.from({ length: segs + 1 }, (_, k) => Math.round((k * (n - 1)) / segs));
+  const cum = new Float32Array(n);
+  const r0 = Math.max(spine.rad[0], 1e-4);
+  for (let i = 1; i < n; i++) {
+    const bend = 1 - clamp(spine.T[i - 1].dot(spine.T[i]), -1, 1);
+    const taper = Math.abs(spine.rad[i] - spine.rad[i - 1]) / r0;
+    const baseBoost = i <= 2 ? 0.55 : 0;
+    cum[i] = cum[i - 1] + 0.35 + bend * 3.5 + taper * 1.8 + baseBoost;
+  }
+  const total = cum[n - 1];
+  const idx = [0];
+  for (let k = 1; k < segs; k++) {
+    const target = (k / segs) * total;
+    let best = idx[k - 1] + 1;
+    const maxAllowed = n - (segs - k);
+    while (best < maxAllowed && cum[best] < target) best++;
+    if (best > idx[k - 1] + 1 && best <= maxAllowed && target - cum[best - 1] < cum[best] - target) best--;
+    idx.push(Math.min(maxAllowed, Math.max(idx[k - 1] + 1, best)));
+  }
+  idx.push(n - 1);
   const d = Object.assign(Object.create(Spine.prototype), spine);
   for (const key of ['pts', 'rad', 'T', 'N', 'B', 's']) d[key] = idx.map((i) => spine[key][i]);
   return d;
@@ -686,6 +718,12 @@ function meshTube(spine, node, b, ctx) {
       nrm.crossVectors(dA, dS);
       if (nrm.lengthSq() < 1e-14) nrm.copy(radialDir[i * ringW + j]);
       nrm.normalize();
+      if (crotchLen > 0 && spine.phiFrame && spine.s[i] < spine.parentRadius * 2.1) {
+        const weld = (1 - smoothstep(spine.parentRadius * 0.3, spine.parentRadius * 2.1, spine.s[i])) * 0.5;
+        nrm.lerp(spine.phiFrame, weld).normalize();
+      }
+
+
       tan.copy(dA).addScaledVector(nrm, -dA.dot(nrm));
       if (tan.lengthSq() < 1e-14) tan.crossVectors(spine.T[i], nrm);
       tan.normalize();
@@ -729,7 +767,9 @@ function buildLeafTemplates(P, aspect, quality, rng) {
     for (let iy = 0; iy <= ls; iy++) {
       const y = iy / ls;
       for (let ix = 0; ix <= ws; ix++) {
-        const xn = ix / ws - 0.5; // -0.5..0.5
+        const span = ls >= 2 ? (iy === 0 ? 0.56 : iy === ls ? 0.74 : 1) : 1;
+
+        const xn = (ix / ws - 0.5) * span; // silhouette-fitted card span
         let x = xn * width;
         let z = Math.abs(xn) * width * fold * 0.6;
         // curl along length (positive -> tip bends below the blade)
@@ -831,7 +871,8 @@ function meshLeaves(node, parentSpines, b, mat, ctx) {
       X.crossVectors(Dv, Nv).normalize();
       Nv.crossVectors(X, Dv).normalize();
 
-      const size0 = Math.max(0.001, P.size * sizeCurve(sp.t) * r.vary(1, P.sizeVar) * scale);
+      const parentScale = P.countByLength ? clamp(0.62 + 0.38 * Math.sqrt(parent.length / refLength), 0.58, 1.08) : 1;
+      const size0 = Math.max(0.001, P.size * sizeCurve(sp.t) * parentScale * r.vary(1, P.sizeVar) * scale);
       const size = size0 * grow;
       pos.copy(at.p).addScaledVector(R, sp.tip ? 0 : at.r).addScaledVector(Dv, P.offset * scale);
       // grow around the card's middle, not its base, so the crown keeps its silhouette
@@ -913,6 +954,7 @@ function meshFrond(spine, node, b, ctx) {
       nrm.crossVectors(dX, dS);
       if (nrm.lengthSq() < 1e-14) nrm.copy(UP);
       nrm.normalize();
+
       tan.copy(dX).addScaledVector(nrm, -dX.dot(nrm));
       if (tan.lengthSq() < 1e-14) tan.set(1, 0, 0);
       tan.normalize();
@@ -1057,6 +1099,7 @@ function finalize(builders, G) {
           hullN.normalize();
           n.set(nrm[v * 3], nrm[v * 3 + 1], nrm[v * 3 + 2]);
           // keep the card's facing hemisphere so lighting does not invert on the back side
+          if (blend >= 0.25 && n.dot(hullN) < 0) n.negate();
           n.lerp(hullN, blend).normalize();
           nrm[v * 3] = n.x; nrm[v * 3 + 1] = n.y; nrm[v * 3 + 2] = n.z;
           t.set(tan[v * 4], tan[v * 4 + 1], tan[v * 4 + 2]);
@@ -1076,9 +1119,22 @@ function finalize(builders, G) {
       let ao = 1 - aoK * clamp(occ, 0, 0.9);
       ao *= 1 - aoK * (1 - b.occl[v]);
 
-      color[v * 4] = clamp(b.tint[v * 3] * ao, 0, 1);
-      color[v * 4 + 1] = clamp(b.tint[v * 3 + 1] * ao, 0, 1);
-      color[v * 4 + 2] = clamp(b.tint[v * 3 + 2] * ao, 0, 1);
+
+
+
+      if (b.kind === 'leaf') {
+        const sunLift = smoothstep(0.55, 1.12, d) * (0.3 + 0.7 * (1 - low));
+        const aoR = Math.pow(ao, 1.12) * (0.97 + 0.06 * sunLift);
+        const aoG = Math.pow(ao, 0.94) * (0.99 + 0.04 * sunLift);
+        const aoB = Math.pow(ao, 1.04) * (1.02 - 0.04 * sunLift);
+        color[v * 4] = clamp(b.tint[v * 3] * aoR, 0, 1);
+        color[v * 4 + 1] = clamp(b.tint[v * 3 + 1] * aoG, 0, 1);
+        color[v * 4 + 2] = clamp(b.tint[v * 3 + 2] * aoB, 0, 1);
+      } else {
+        color[v * 4] = clamp(b.tint[v * 3] * ao, 0, 1);
+        color[v * 4 + 1] = clamp(b.tint[v * 3 + 1] * ao, 0, 1);
+        color[v * 4 + 2] = clamp(b.tint[v * 3 + 2] * ao, 0, 1);
+      }
       color[v * 4 + 3] = 1;
 
       uv2[v * 2] = clamp(uv2[v * 2] / maxFlex, 0, 1);

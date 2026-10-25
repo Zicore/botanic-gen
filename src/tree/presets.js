@@ -28,7 +28,7 @@ function build(name, materials, spec) {
 
 function oak() {
   const bark = makeMaterial('bark', 'Oak Bark', {
-    style: 'furrowed', seed: 4, scale: 20, stretch: 6, depth: 0.85, crackWidth: 0.4, warp: 0.6, detail: 0.9, moss: 0.12,
+    style: 'furrowed', seed: 4, scale: 20, stretch: 6, depth: 0.85, crackWidth: 0.4, warp: 0.6, detail: 0.9, moss: 0.14,
     colorTop: '#5f584a', colorCrack: '#1a140f', colorVar: '#7a7569', colorMoss: '#4d5e2a', tileSize: 0.85, tileAspect: 1.6,
     normalStrength: 2.2,
   });
@@ -43,37 +43,43 @@ function oak() {
     children: [{
       type: 'trunk', name: 'Trunk',
       params: {
-        length: 7.5, radius: 0.5, radiusCurve: [[0, 1], [0.3, 0.74], [0.75, 0.42], [1, 0.16]],
-        tilt: 4, gnarl: 0.35, gnarlScale: 0.3, flare: 0.75, flareHeight: 1.3, flareLobes: 7, ripple: 0.06, material: bark.id,
+        length: 6.8, radius: 0.52, radiusCurve: [[0, 1], [0.3, 0.74], [0.75, 0.42], [1, 0.16]],
+        tilt: 4, gnarl: 0.35, gnarlScale: 0.3, flare: 0.85, flareHeight: 1.35, flareLobes: 7, ripple: 0.06, material: bark.id,
       },
       children: [{
         type: 'branches', name: 'Limbs',
         params: {
-          count: 8, countByLength: false, start: 0.38, end: 1, length: 0.95, lengthCurve: [[0, 1], [0.6, 0.85], [1, 0.55]], lengthVar: 0.2,
-          radiusRatio: 0.66, angle: 62, angleCurve: [[0, 1.15], [1, 0.55]], angleVar: 10, gravity: 0.3, upAttraction: 0.25,
-          gnarl: 0.7, gnarlScale: 0.4, collar: 0.7, lengthSegments: 18, radialSegments: 11, flex: 0.35,
+          count: 9, countByLength: false, start: 0.32, end: 0.98, length: 0.92, lengthCurve: [[0, 0.95], [0.55, 1], [1, 0.5]], lengthVar: 0.2,
+          radiusRatio: 0.65, angle: 66, angleCurve: [[0, 1.18], [0.55, 0.92], [1, 0.42]], angleVar: 10, gravity: 0.36, upAttraction: 0.16, outward: 0.26,
+          gnarl: 0.68, gnarlScale: 0.4, collar: 0.7, lengthSegments: 14, radialSegments: 10, flex: 0.35,
         },
         children: [{
           type: 'branches', name: 'Branches',
           params: {
-            count: 15, start: 0.12, end: 1, phyllotaxy: 'alternate', rotationJitter: 50, length: 0.5,
-            lengthCurve: [[0, 1], [1, 0.45]], radiusRatio: 0.55, angle: 50, angleVar: 14, gravity: 0.35,
-            upAttraction: 0.3, gnarl: 0.7, gnarlScale: 1.1, lengthSegments: 9, radialSegments: 7, flex: 0.5,
+            count: 12, start: 0.12, end: 1, phyllotaxy: 'alternate', rotationJitter: 50, length: 0.52,
+            lengthCurve: [[0, 1], [1, 0.48]], radiusRatio: 0.54, angle: 52, angleVar: 14, gravity: 0.32,
+            upAttraction: 0.22, outward: 0.2, gnarl: 0.65, gnarlScale: 1.1, lengthSegments: 7, radialSegments: 6, flex: 0.5,
           },
           children: [{
             type: 'branches', name: 'Twigs',
             params: {
-              count: 10, start: 0.1, end: 1, phyllotaxy: 'alternate', rotationJitter: 60, length: 0.34,
-              lengthCurve: [[0, 1], [1, 0.55]], radiusRatio: 0.5, angle: 48, angleVar: 15, gravity: 0.15,
-              upAttraction: 0.2, gnarl: 0.5, gnarlScale: 2.5, lengthSegments: 4, radialSegments: 4, flex: 0.7, collar: 0.3,
+              count: 8, start: 0.1, end: 1, phyllotaxy: 'alternate', rotationJitter: 60, length: 0.38,
+              lengthCurve: [[0, 1], [1, 0.58]], radiusRatio: 0.48, angle: 48, angleVar: 15, gravity: 0.15,
+              upAttraction: 0.18, outward: 0.15, gnarl: 0.5, gnarlScale: 2.5, lengthSegments: 3, radialSegments: 4, flex: 0.7, collar: 0.3,
             },
             children: [{
               type: 'leaves', name: 'Leaf clusters',
               params: {
-                count: 7, start: 0.15, end: 1, phyllotaxy: 'spiral', size: 0.7, sizeVar: 0.2, angle: 45, faceUp: 0.5,
-                roll: 35, droop: 0.05, fold: 0.12, curl: 0.15, material: leaf.id, normalBlend: 0.6,
+                count: 7, start: 0.12, end: 1, phyllotaxy: 'spiral', size: 0.85, sizeVar: 0.22, angle: 46, faceUp: 0.55,
+                roll: 35, droop: 0.06, fold: 0.14, curl: 0.15, lengthSegments: 2, material: leaf.id, normalBlend: 0.65,
               },
             }],
+          }, {
+            type: 'leaves', name: 'Inner foliage',
+            params: {
+              count: 4, start: 0.25, end: 0.95, phyllotaxy: 'spiral', size: 0.95, sizeVar: 0.2, angle: 50, faceUp: 0.6,
+              roll: 40, droop: 0.05, fold: 0.12, curl: 0.12, tipLeaf: false, lengthSegments: 2, material: leaf.id, normalBlend: 0.7,
+            },
           }],
         }],
       }],
@@ -86,41 +92,51 @@ function birch() {
     style: 'birch', seed: 9, scale: 4, stretch: 1.5, depth: 0.45, crackWidth: 0.3, warp: 0.3, detail: 0.4, rings: 0.75, moss: 0.05,
     colorTop: '#e6e1d6', colorCrack: '#24211f', colorVar: '#bdb6a8', colorMoss: '#6b7a3a', roughness: 0.7, tileSize: 0.7, tileAspect: 1.2,
   });
+  const twigBark = makeMaterial('bark', 'Birch Shoot Bark', {
+    style: 'smooth', seed: 19, scale: 5, stretch: 2, depth: 0.3, crackWidth: 0.2, detail: 0.4, rings: 0.5, moss: 0,
+    colorTop: '#4e382c', colorCrack: '#261a14', colorVar: '#634838', roughness: 0.65, tileSize: 0.35, tileAspect: 1.2, resolution: 512,
+  });
   const leaf = makeMaterial('leaf', 'Birch Twig', {
     kind: 'twig', shape: 'deltoid', width: 0.7, tip: 0.75, serration: 0.55, teeth: 30, petiole: 0.18, veins: 7,
-    veinAngle: 42, twigLeaves: 9, leafScale: 0.3, twigSpread: 48, twigCurve: 0.55, sideTwigs: 1, twigWidth: 0.25,
+    veinAngle: 42, twigLeaves: 9, leafScale: 0.32, twigSpread: 48, twigCurve: 0.55, sideTwigs: 1, twigWidth: 0.25,
     colorBase: '#4a7428', colorTip: '#5e8c36', colorVein: '#93b558', colorSubsurface: '#b9d14a',
     colorVariation: 0.35, dryness: 0.08, translucency: 0.7,
   });
-  return build('Birch', [bark, leaf], {
+  return build('Birch', [bark, twigBark, leaf], {
     type: 'tree', id: 'tree', params: { seed: 4242 },
     children: [{
       type: 'trunk', name: 'Trunk',
       params: {
-        length: 15, radius: 0.2, radiusCurve: [[0, 1], [0.5, 0.6], [1, 0.08]], tilt: 5, gnarl: 0.2, gnarlScale: 0.25,
+        length: 14.5, radius: 0.21, radiusCurve: [[0, 1], [0.5, 0.6], [1, 0.08]], tilt: 5, gnarl: 0.2, gnarlScale: 0.25,
         flare: 0.35, flareHeight: 0.6, flareLobes: 4, ripple: 0.02, material: bark.id,
       },
       children: [{
         type: 'branches', name: 'Branches',
         params: {
-          count: 26, start: 0.3, end: 0.97, length: 0.38, lengthCurve: [[0, 0.7], [0.3, 1], [1, 0.3]], radiusRatio: 0.45,
-          angle: 50, angleCurve: [[0, 1.1], [1, 0.7]], gravity: 0.45, upAttraction: 0.3, gnarl: 0.4, gnarlScale: 0.8,
-          lengthSegments: 12, radialSegments: 7, flex: 0.55,
+          count: 24, start: 0.28, end: 0.97, length: 0.38, lengthCurve: [[0, 0.75], [0.35, 1], [1, 0.28]], radiusRatio: 0.44,
+          angle: 48, angleCurve: [[0, 1.12], [1, 0.65]], gravity: 0.4, upAttraction: 0.28, outward: 0.18, gnarl: 0.38, gnarlScale: 0.8,
+          lengthSegments: 10, radialSegments: 6, flex: 0.55,
         },
         children: [{
           type: 'branches', name: 'Hanging twigs',
           params: {
-            count: 14, start: 0.1, end: 1, length: 0.45, lengthCurve: [[0, 1], [1, 0.5]], radiusRatio: 0.4, angle: 40,
-            gravity: 1.4, gravityCurve: [[0, 0.3], [1, 1]], upAttraction: 0, gnarl: 0.3, gnarlScale: 2,
-            lengthSegments: 6, radialSegments: 4, flex: 0.9, collar: 0.2,
+            count: 13, start: 0.1, end: 1, length: 0.46, lengthCurve: [[0, 1], [1, 0.5]], radiusRatio: 0.38, angle: 38,
+            gravity: 1.45, gravityCurve: [[0, 0.3], [1, 1]], upAttraction: 0, outward: 0.08, gnarl: 0.28, gnarlScale: 2,
+            lengthSegments: 5, radialSegments: 4, flex: 0.9, collar: 0.2, material: twigBark.id,
           },
           children: [{
             type: 'leaves', name: 'Leaves',
             params: {
-              count: 6, start: 0.15, size: 0.42, sizeVar: 0.2, angle: 28, faceUp: 0.3, roll: 40, droop: 0.25, fold: 0.1,
-              curl: 0.1, material: leaf.id, normalBlend: 0.55,
+              count: 7, start: 0.1, size: 0.58, sizeVar: 0.22, angle: 28, faceUp: 0.35, roll: 40, droop: 0.28, fold: 0.12,
+              curl: 0.12, lengthSegments: 2, material: leaf.id, normalBlend: 0.6,
             },
           }],
+        }, {
+          type: 'leaves', name: 'Crown foliage',
+          params: {
+            count: 5, start: 0.3, end: 0.95, size: 0.62, sizeVar: 0.2, angle: 34, faceUp: 0.45, roll: 35, droop: 0.18,
+            fold: 0.1, curl: 0.1, tipLeaf: false, lengthSegments: 2, material: leaf.id, normalBlend: 0.65,
+          },
         }],
       }],
     }],
@@ -138,8 +154,10 @@ function spruce() {
     dryness: 0.04, roughness: 0.7, translucency: 0.35, alphaCutoff: 0.4,
   });
   const spray = (count, size) => ({
-    count, countByLength: true, start: 0.05, end: 1, phyllotaxy: 'alternate', rotationJitter: 40, size, sizeVar: 0.2,
-    angle: 30, angleVar: 12, faceUp: 0.55, roll: 50, droop: 0.2, fold: 0.35, curl: 0.2, material: needles.id, normalBlend: 0.5,
+    count, countByLength: true, start: 0.05, end: 1, phyllotaxy: 'alternate', rotationJitter: 40, size,
+    sizeCurve: [[0, 1], [0.7, 0.92], [1, 0.68]], sizeVar: 0.2,
+    angle: 30, angleVar: 12, faceUp: 0.55, roll: 50, droop: 0.2, fold: 0.35, curl: 0.2,
+    widthSegments: 2, lengthSegments: 2, material: needles.id, normalBlend: 0.55,
   });
   return build('Spruce', [bark, needles], {
     type: 'tree', id: 'tree', params: { seed: 777 },
@@ -147,29 +165,142 @@ function spruce() {
       type: 'trunk', name: 'Trunk',
       params: {
         length: 19, radius: 0.3, radiusCurve: [[0, 1], [0.15, 0.8], [1, 0.04]], tilt: 1, gnarl: 0.08, gnarlScale: 0.2,
-        flare: 0.5, flareHeight: 0.9, flareLobes: 5, ripple: 0.03, lengthSegments: 40, material: bark.id,
+        flare: 0.5, flareHeight: 0.9, flareLobes: 5, ripple: 0.03, lengthSegments: 32, radialSegments: 12, material: bark.id,
       },
       children: [{
         type: 'branches', name: 'Whorls',
         params: {
-          count: 130, countByLength: false, start: 0.07, end: 0.985, phyllotaxy: 'whorled', whorlSize: 5, rotationJitter: 16,
-          positionJitter: 0.3, length: 0.2, lengthCurve: [[0, 1], [0.55, 0.6], [1, 0.06]], lengthVar: 0.15,
+          count: 105, countByLength: false, start: 0.07, end: 0.985, phyllotaxy: 'whorled', whorlSize: 5, rotationJitter: 16,
+          positionJitter: 0.3, length: 0.21, lengthCurve: [[0, 1], [0.55, 0.58], [1, 0.05]], lengthVar: 0.15,
           radiusRatio: 0.2, radiusCurve: [[0, 1], [1, 0.12]], angle: 84, angleCurve: [[0, 1.12], [0.7, 0.92], [1, 0.62]],
-          gravity: 0.45, gravityCurve: [[0, 0.1], [0.6, 0.6], [1, 1]], upAttraction: 0.3, flatten: 0.1, gnarl: 0.18, gnarlScale: 0.8,
-          lengthSegments: 9, radialSegments: 6, collar: 0.4, flex: 0.45,
+          gravity: 0.45, gravityCurve: [[0, 0.1], [0.6, 0.6], [1, 1]], upAttraction: 0.28, outward: 0.12, flatten: 0.12, gnarl: 0.18, gnarlScale: 0.8,
+          lengthSegments: 7, radialSegments: 5, collar: 0.4, flex: 0.45,
         },
         children: [{
           type: 'branches', name: 'Hanging shoots',
           params: {
-            count: 16, start: 0.08, end: 0.95, phyllotaxy: 'alternate', rotationJitter: 35, length: 0.32,
+            count: 12, start: 0.08, end: 0.95, phyllotaxy: 'alternate', rotationJitter: 35, length: 0.34,
             lengthCurve: [[0, 0.8], [0.4, 1], [1, 0.35]], radiusRatio: 0.4, angle: 58, angleVar: 12, gravity: 0.9,
-            gravityCurve: [[0, 0.3], [1, 1]], upAttraction: 0, flatten: 0.2, gnarl: 0.12, lengthSegments: 4, radialSegments: 3,
+            gravityCurve: [[0, 0.3], [1, 1]], upAttraction: 0, outward: 0.05, flatten: 0.2, gnarl: 0.12, lengthSegments: 3, radialSegments: 3,
             collar: 0.2, flex: 0.75,
           },
-          children: [{ type: 'leaves', name: 'Needle sprays (shoots)', params: spray(5, 0.5) }],
+          children: [{ type: 'leaves', name: 'Needle sprays (shoots)', params: spray(4, 0.56) }],
         }, {
           type: 'leaves', name: 'Needle sprays',
-          params: { ...spray(11, 0.6), angle: 22, faceUp: 0.65 },
+          params: { ...spray(9, 0.65), angle: 22, faceUp: 0.65 },
+        }],
+      }],
+    }],
+  });
+}
+
+function willow() {
+  const bark = makeMaterial('bark', 'Willow Bark', {
+    style: 'furrowed', seed: 14, scale: 16, stretch: 5.5, depth: 0.8, crackWidth: 0.38, warp: 0.65, detail: 0.75, moss: 0.18,
+    colorTop: '#5a5346', colorCrack: '#211c16', colorVar: '#706858', colorMoss: '#4a6128', tileSize: 0.8, tileAspect: 1.5,
+  });
+  const shootBark = makeMaterial('bark', 'Willow Shoot', {
+    style: 'smooth', seed: 18, scale: 5, stretch: 3, depth: 0.2, crackWidth: 0.2, detail: 0.3, rings: 0.15, moss: 0,
+    colorTop: '#7a7238', colorCrack: '#45401e', colorVar: '#8f8644', roughness: 0.65, tileSize: 0.3, resolution: 512,
+  });
+  const leaf = makeMaterial('leaf', 'Willow Curtain', {
+    kind: 'twig', shape: 'lanceolate', width: 0.24, tip: 0.85, serration: 0.15, teeth: 36, petiole: 0.06, veins: 8,
+    veinAngle: 38, twigLeaves: 15, leafScale: 0.34, twigSpread: 36, twigCurve: 0.35, sideTwigs: 1, twigWidth: 0.2,
+    colorBase: '#4c7328', colorTip: '#769c38', colorVein: '#9ebb56', colorSubsurface: '#bdd64b',
+    colorVariation: 0.35, dryness: 0.05, translucency: 0.72,
+  });
+  return build('Weeping Willow', [bark, shootBark, leaf], {
+    type: 'tree', id: 'tree', params: { seed: 8080 },
+    children: [{
+      type: 'trunk', name: 'Trunk',
+      params: {
+        length: 6.2, radius: 0.48, radiusCurve: [[0, 1], [0.35, 0.75], [0.8, 0.45], [1, 0.22]], tilt: 6, gnarl: 0.45, gnarlScale: 0.35,
+        flare: 0.75, flareHeight: 1.2, flareLobes: 6, ripple: 0.06, lengthSegments: 18, radialSegments: 12, material: bark.id,
+      },
+      children: [{
+        type: 'branches', name: 'Scaffold limbs',
+        params: {
+          count: 8, countByLength: false, start: 0.42, end: 0.98, length: 0.95, lengthCurve: [[0, 0.9], [0.5, 1], [1, 0.65]],
+          radiusRatio: 0.62, angle: 56, angleCurve: [[0, 1.15], [1, 0.55]], gravity: 0.25, upAttraction: 0.35, outward: 0.3,
+          gnarl: 0.6, gnarlScale: 0.45, collar: 0.65, lengthSegments: 12, radialSegments: 8, flex: 0.35,
+        },
+        children: [{
+          type: 'branches', name: 'Arching boughs',
+          params: {
+            count: 9, start: 0.2, end: 1, phyllotaxy: 'alternate', rotationJitter: 45, length: 0.58,
+            lengthCurve: [[0, 0.9], [0.5, 1], [1, 0.6]], radiusRatio: 0.5, angle: 48, gravity: 0.75,
+            gravityCurve: [[0, 0.15], [0.5, 0.55], [1, 1]], upAttraction: 0.22, outward: 0.25, gnarl: 0.4, gnarlScale: 1,
+            lengthSegments: 7, radialSegments: 5, flex: 0.55,
+          },
+          children: [{
+            type: 'branches', name: 'Weeping curtains',
+            params: {
+              count: 11, start: 0.15, end: 1, length: 0.85, lengthCurve: [[0, 0.85], [0.5, 1], [1, 0.7]], lengthVar: 0.22,
+              radiusRatio: 0.32, angle: 35, gravity: 2.3, gravityCurve: [[0, 0.45], [0.4, 0.9], [1, 1]],
+              upAttraction: 0, outward: 0.05, gnarl: 0.18, gnarlScale: 1.8, lengthSegments: 6, radialSegments: 3,
+              collar: 0.15, flex: 0.95, material: shootBark.id,
+            },
+            children: [{
+              type: 'leaves', name: 'Willow fronds',
+              params: {
+                count: 6, start: 0.08, end: 1, size: 0.72, sizeVar: 0.2, angle: 22, faceUp: 0.2, roll: 35, droop: 0.45,
+                fold: 0.1, curl: 0.15, lengthSegments: 2, flutter: 0.85, material: leaf.id, normalBlend: 0.6,
+              },
+            }],
+          }],
+        }],
+      }],
+    }],
+  });
+}
+
+function maple() {
+  const bark = makeMaterial('bark', 'Maple Bark', {
+    style: 'smooth', seed: 33, scale: 7, stretch: 2.8, depth: 0.38, crackWidth: 0.22, warp: 0.35, detail: 0.55, rings: 0.2, moss: 0.1,
+    colorTop: '#595048', colorCrack: '#26201b', colorVar: '#6e6359', colorMoss: '#4a6328', roughness: 0.78, tileSize: 0.55,
+  });
+  const leaf = makeMaterial('leaf', 'Autumn Maple Twig', {
+    kind: 'twig', seed: 19, shape: 'cordate', width: 0.92, tip: 0.65, lobes: 5, lobeDepth: 0.52, serration: 0.35, teeth: 28,
+    petiole: 0.16, veins: 5, veinAngle: 52, veinStrength: 0.55, twigLeaves: 9, leafScale: 0.36, twigSpread: 54, twigCurve: 0.22, sideTwigs: 2,
+    colorBase: '#b8291e', colorTip: '#e66820', colorVein: '#d98c2b', colorSubsurface: '#f7a531',
+    colorVariation: 0.55, dryness: 0.08, roughness: 0.5, translucency: 0.72, variants: 4,
+  });
+  return build('Autumn Maple', [bark, leaf], {
+    type: 'tree', id: 'tree', params: { seed: 5150, leafTint: 0.16 },
+    children: [{
+      type: 'trunk', name: 'Trunk',
+      params: {
+        count: 2, length: 5.8, lengthVar: 0.12, radius: 0.28, radiusCurve: [[0, 1], [0.35, 0.72], [1, 0.18]],
+        spread: 0.12, splay: 14, tilt: 6, gnarl: 0.42, gnarlScale: 0.4, flare: 0.55, flareHeight: 0.85, flareLobes: 5,
+        ripple: 0.04, lengthSegments: 16, radialSegments: 10, material: bark.id,
+      },
+      children: [{
+        type: 'branches', name: 'Tiered limbs',
+        params: {
+          count: 7, countByLength: false, start: 0.32, end: 0.98, length: 0.88, lengthCurve: [[0, 0.95], [0.5, 1], [1, 0.55]],
+          radiusRatio: 0.62, angle: 64, angleCurve: [[0, 1.15], [1, 0.5]], gravity: 0.22, upAttraction: 0.24, outward: 0.3,
+          flatten: 0.22, gnarl: 0.55, gnarlScale: 0.5, collar: 0.55, lengthSegments: 11, radialSegments: 7, flex: 0.4,
+        },
+        children: [{
+          type: 'branches', name: 'Branches',
+          params: {
+            count: 9, start: 0.15, end: 1, phyllotaxy: 'opposite', rotationJitter: 35, length: 0.52,
+            lengthCurve: [[0, 1], [1, 0.5]], radiusRatio: 0.52, angle: 50, gravity: 0.2, upAttraction: 0.25, outward: 0.2,
+            flatten: 0.25, gnarl: 0.45, gnarlScale: 1.2, lengthSegments: 5, radialSegments: 4, flex: 0.65,
+          },
+          children: [{
+            type: 'leaves', name: 'Maple clusters',
+            params: {
+              count: 8, start: 0.12, end: 1, phyllotaxy: 'opposite', size: 0.78, sizeVar: 0.22, angle: 48, faceUp: 0.65,
+              roll: 30, droop: 0.05, fold: 0.14, curl: 0.12, lengthSegments: 2, material: leaf.id, normalBlend: 0.68,
+            },
+          }],
+        }, {
+          type: 'leaves', name: 'Canopy fill',
+          params: {
+            count: 4, start: 0.3, end: 0.95, size: 0.88, sizeVar: 0.2, angle: 52, faceUp: 0.7, roll: 35,
+            tipLeaf: false, lengthSegments: 2, material: leaf.id, normalBlend: 0.72,
+          },
         }],
       }],
     }],
@@ -249,15 +380,15 @@ function shrub() {
         type: 'branches', name: 'Branches',
         params: {
           count: 9, start: 0.15, end: 1, length: 0.5, lengthCurve: [[0, 1], [1, 0.45]], radiusRatio: 0.6, angle: 45,
-          gravity: 0.35, upAttraction: 0.3, gnarl: 0.6, gnarlScale: 3, lengthSegments: 6, radialSegments: 4, flex: 0.7,
+          gravity: 0.35, upAttraction: 0.3, outward: 0.2, gnarl: 0.6, gnarlScale: 3, lengthSegments: 6, radialSegments: 4, flex: 0.7,
         },
         children: [{
           type: 'leaves', name: 'Leaves',
-          params: { count: 7, start: 0.1, size: 0.32, sizeVar: 0.25, angle: 50, faceUp: 0.45, roll: 40, material: leaf.id, normalBlend: 0.65 },
+          params: { count: 7, start: 0.1, size: 0.34, sizeVar: 0.25, angle: 50, faceUp: 0.45, roll: 40, lengthSegments: 2, material: leaf.id, normalBlend: 0.65 },
         }],
       }, {
         type: 'leaves', name: 'Stem leaves',
-        params: { count: 6, start: 0.35, size: 0.3, sizeVar: 0.25, angle: 60, faceUp: 0.45, roll: 40, material: leaf.id, normalBlend: 0.65 },
+        params: { count: 6, start: 0.35, size: 0.32, sizeVar: 0.25, angle: 60, faceUp: 0.45, roll: 40, lengthSegments: 2, material: leaf.id, normalBlend: 0.65 },
       }],
     }],
   });
@@ -318,13 +449,13 @@ function cityLinden() {
         params: {
           count: 8, countByLength: false, start: 0.33, end: 0.95, length: 0.48, lengthCurve: [[0, 0.85], [0.35, 1], [1, 0.35]],
           lengthVar: 0.15, radiusRatio: 0.55, angle: 52, angleCurve: [[0, 1.15], [1, 0.55]], angleVar: 8, gravity: 0.15,
-          upAttraction: 0.35, gnarl: 0.35, gnarlScale: 0.5, collar: 0.4, lengthSegments: 5, radialSegments: 5, flex: 0.4,
+          upAttraction: 0.35, outward: 0.2, gnarl: 0.35, gnarlScale: 0.5, collar: 0.4, lengthSegments: 5, radialSegments: 5, flex: 0.4,
         },
         children: [{
           type: 'branches', name: 'Branches',
           params: {
             count: 6, start: 0.25, end: 0.95, phyllotaxy: 'alternate', rotationJitter: 50, length: 0.5, lengthCurve: [[0, 1], [1, 0.6]],
-            radiusRatio: 0.5, angle: 45, angleVar: 15, gravity: 0.25, upAttraction: 0.2, gnarl: 0.4, gnarlScale: 1.2, collar: 0.2,
+            radiusRatio: 0.5, angle: 45, angleVar: 15, gravity: 0.25, upAttraction: 0.2, outward: 0.15, gnarl: 0.4, gnarlScale: 1.2, collar: 0.2,
             lengthSegments: 3, radialSegments: 3, flex: 0.65,
           },
           children: [{ type: 'leaves', name: 'Foliage cards', params: lowCard(leaf.id, { count: 6, size: 1.7 }) }],
@@ -360,14 +491,14 @@ function cityPlane() {
         type: 'branches', name: 'Limbs',
         params: {
           count: 6, countByLength: false, start: 0.4, end: 0.92, length: 0.85, lengthCurve: [[0, 1], [1, 0.6]], lengthVar: 0.15,
-          radiusRatio: 0.62, angle: 55, angleCurve: [[0, 1.1], [1, 0.7]], angleVar: 10, gravity: 0.2, upAttraction: 0.35,
+          radiusRatio: 0.62, angle: 55, angleCurve: [[0, 1.1], [1, 0.7]], angleVar: 10, gravity: 0.2, upAttraction: 0.3, outward: 0.2,
           gnarl: 0.5, gnarlScale: 0.35, collar: 0.5, lengthSegments: 6, radialSegments: 6, flex: 0.35,
         },
         children: [{
           type: 'branches', name: 'Branches',
           params: {
             count: 7, start: 0.2, end: 0.95, phyllotaxy: 'alternate', rotationJitter: 50, length: 0.42, lengthCurve: [[0, 1], [1, 0.55]],
-            radiusRatio: 0.5, angle: 50, angleVar: 15, gravity: 0.3, upAttraction: 0.2, gnarl: 0.5, gnarlScale: 1, collar: 0.2,
+            radiusRatio: 0.5, angle: 50, angleVar: 15, gravity: 0.3, upAttraction: 0.2, outward: 0.15, gnarl: 0.5, gnarlScale: 1, collar: 0.2,
             lengthSegments: 3, radialSegments: 3, flex: 0.6,
           },
           children: [{ type: 'leaves', name: 'Foliage cards', params: lowCard(leaf.id, { count: 6, size: 2.0 }) }],
@@ -400,7 +531,7 @@ function cityPoplar() {
         type: 'branches', name: 'Upright branches',
         params: {
           count: 20, countByLength: false, start: 0.12, end: 0.95, length: 0.2, lengthCurve: [[0, 0.7], [0.35, 1], [1, 0.4]],
-          lengthVar: 0.2, radiusRatio: 0.4, angle: 28, angleVar: 8, gravity: 0, upAttraction: 1.1, gnarl: 0.25, gnarlScale: 0.8,
+          lengthVar: 0.2, radiusRatio: 0.4, angle: 28, angleVar: 8, gravity: 0, upAttraction: 1.1, outward: 0, gnarl: 0.25, gnarlScale: 0.8,
           collar: 0.3, lengthSegments: 3, radialSegments: 3, flex: 0.55,
         },
         children: [{ type: 'leaves', name: 'Foliage cards', params: lowCard(leaf.id, { count: 6, size: 1.5, angle: 30, faceUp: 0.35 }) }],
@@ -425,27 +556,29 @@ function cityOak() {
     children: [{
       type: 'trunk', name: 'Trunk',
       params: {
-        length: 6, radius: 0.42, radiusCurve: [[0, 1], [0.3, 0.72], [1, 0.3]], tilt: 4, gnarl: 0.3, gnarlScale: 0.3,
+        length: 6, radius: 0.42, radiusCurve: [[0, 1], [0.3, 0.72], [1, 0.28]], tilt: 4, gnarl: 0.3, gnarlScale: 0.3,
         flare: 0.6, flareHeight: 1, flareLobes: 5, ripple: 0.05, sink: 0.2, lengthSegments: 7, radialSegments: 8, material: bark.id,
       },
       children: [{
         type: 'branches', name: 'Limbs',
         params: {
-          count: 6, countByLength: false, start: 0.45, end: 1, length: 1.15, lengthCurve: [[0, 1], [1, 0.65]], lengthVar: 0.2,
-          radiusRatio: 0.66, angle: 62, angleCurve: [[0, 1.15], [1, 0.55]], angleVar: 10, gravity: 0.3, upAttraction: 0.3,
-          gnarl: 0.7, gnarlScale: 0.4, collar: 0.6, lengthSegments: 7, radialSegments: 6, flex: 0.35,
+          count: 7, countByLength: false, start: 0.4, end: 0.98, length: 1.05, lengthCurve: [[0, 0.95], [0.5, 1], [1, 0.55]], lengthVar: 0.2,
+          radiusRatio: 0.64, angle: 64, angleCurve: [[0, 1.15], [0.6, 0.9], [1, 0.45]], angleVar: 10, gravity: 0.32, upAttraction: 0.18, outward: 0.26,
+          gnarl: 0.65, gnarlScale: 0.4, collar: 0.6, lengthSegments: 7, radialSegments: 6, flex: 0.35,
         },
         children: [{
           type: 'branches', name: 'Branches',
           params: {
-            count: 7, start: 0.15, end: 1, phyllotaxy: 'alternate', rotationJitter: 50, length: 0.42, lengthCurve: [[0, 1], [1, 0.45]],
-            radiusRatio: 0.5, angle: 50, angleVar: 14, gravity: 0.3, upAttraction: 0.3, gnarl: 0.7, gnarlScale: 1.1, collar: 0.25,
+            count: 7, start: 0.15, end: 1, phyllotaxy: 'alternate', rotationJitter: 50, length: 0.44, lengthCurve: [[0, 1], [1, 0.5]],
+            radiusRatio: 0.5, angle: 50, angleVar: 14, gravity: 0.28, upAttraction: 0.22, outward: 0.2, gnarl: 0.65, gnarlScale: 1.1, collar: 0.25,
             lengthSegments: 3, radialSegments: 3, flex: 0.6,
           },
           children: [{ type: 'leaves', name: 'Foliage cards', params: lowCard(leaf.id, { count: 6, size: 2.0 }) }],
         }, {
-          type: 'leaves', name: 'Inner cards', params: lowCard(leaf.id, { count: 4, start: 0.4, size: 1.8, tipLeaf: false }),
+          type: 'leaves', name: 'Inner cards', params: lowCard(leaf.id, { count: 4, start: 0.35, size: 1.85, tipLeaf: false }),
         }],
+      }, {
+        type: 'leaves', name: 'Crown top', params: lowCard(leaf.id, { count: 4, start: 0.85, size: 1.9, faceUp: 0.7 }),
       }],
     }],
   });
@@ -539,12 +672,16 @@ function cityBirch() {
     style: 'birch', seed: 9, scale: 4, stretch: 1.5, depth: 0.45, crackWidth: 0.3, warp: 0.3, detail: 0.4, rings: 0.75, moss: 0.05,
     colorTop: '#e6e1d6', colorCrack: '#24211f', colorVar: '#bdb6a8', colorMoss: '#6b7a3a', roughness: 0.7, tileSize: 0.7, tileAspect: 1.2,
   });
+  const shootBark = lowBark('Birch Shoot', {
+    style: 'smooth', seed: 19, scale: 5, stretch: 2, depth: 0.25, crackWidth: 0.2, detail: 0.4, rings: 0.45, moss: 0,
+    colorTop: '#523b2e', colorCrack: '#261a14', colorVar: '#664a3a', roughness: 0.65, tileSize: 0.35,
+  });
   const leaf = lowClump('Birch Foliage', {
     shape: 'deltoid', width: 0.7, tip: 0.75, serration: 0.55, teeth: 30, petiole: 0.18, veins: 7, veinAngle: 42,
-    clumpLeaves: 140, clumpLeafSize: 0.09, clumpWidth: 0.8, twigWidth: 0.2,
+    clumpLeaves: 140, clumpLeafSize: 0.095, clumpWidth: 0.82, twigWidth: 0.2,
     colorBase: '#4a7428', colorTip: '#5e8c36', colorVein: '#93b558', colorSubsurface: '#b9d14a', colorVariation: 0.35, translucency: 0.7,
   });
-  return build('City Birch', [bark, leaf], {
+  return build('City Birch', [bark, shootBark, leaf], {
     type: 'tree', id: 'tree', params: { seed: 2606 },
     children: [{
       type: 'trunk', name: 'Trunk',
@@ -555,16 +692,17 @@ function cityBirch() {
       children: [{
         type: 'branches', name: 'Branches',
         params: {
-          count: 18, countByLength: false, start: 0.3, end: 0.96, length: 0.36, lengthCurve: [[0, 0.7], [0.3, 1], [1, 0.3]],
-          radiusRatio: 0.45, angle: 50, angleCurve: [[0, 1.1], [1, 0.7]], gravity: 0.7, gravityCurve: [[0, 0.2], [1, 1]],
-          upAttraction: 0.25, gnarl: 0.35, gnarlScale: 0.8, collar: 0.3, lengthSegments: 4, radialSegments: 3, flex: 0.7,
+          count: 18, countByLength: false, start: 0.28, end: 0.96, length: 0.38, lengthCurve: [[0, 0.75], [0.35, 1], [1, 0.32]],
+          radiusRatio: 0.45, angle: 50, angleCurve: [[0, 1.1], [1, 0.7]], gravity: 0.65, gravityCurve: [[0, 0.2], [1, 1]],
+          upAttraction: 0.22, outward: 0.18, gnarl: 0.35, gnarlScale: 0.8, collar: 0.3, lengthSegments: 4, radialSegments: 3, flex: 0.7,
+          material: shootBark.id,
         },
         children: [{
           type: 'leaves', name: 'Hanging cards',
-          params: lowCard(leaf.id, { count: 9, start: 0.15, size: 1.3, angle: 35, faceUp: 0.3, droop: 0.45, curl: 0.2 }),
+          params: lowCard(leaf.id, { count: 9, start: 0.12, size: 1.5, angle: 35, faceUp: 0.35, droop: 0.42, curl: 0.2 }),
         }],
       }, {
-        type: 'leaves', name: 'Crown top', params: lowCard(leaf.id, { count: 4, start: 0.88, size: 1.2, faceUp: 0.4, droop: 0.2 }),
+        type: 'leaves', name: 'Crown top', params: lowCard(leaf.id, { count: 5, start: 0.84, size: 1.35, faceUp: 0.45, droop: 0.2 }),
       }],
     }],
   });
@@ -710,6 +848,8 @@ export const PRESETS = {
   oak: { label: 'Oak', build: oak },
   birch: { label: 'Birch', build: birch },
   spruce: { label: 'Spruce', build: spruce },
+  willow: { label: 'Weeping Willow', build: willow },
+  maple: { label: 'Autumn Maple', build: maple },
   palm: { label: 'Palm', build: palm },
   shrub: { label: 'Shrub', build: shrub },
   grass: { label: 'Grass', build: grass },
