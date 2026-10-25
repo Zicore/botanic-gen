@@ -11,7 +11,7 @@ import {
 } from '@xyflow/react';
 import * as FlowComponents from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Plus, LayoutGrid, Maximize, Eye, EyeOff, MoreHorizontal, SlidersHorizontal } from 'lucide-react';
+import { Plus, LayoutGrid, Maximize, Eye, EyeOff, MoreHorizontal, SlidersHorizontal, Copy, Trash2 } from 'lucide-react';
 import { useStore } from '../state/store.js';
 import { NODE_TYPES } from '../tree/schema.js';
 import { canParent, isDescendant } from '../tree/document.js';
@@ -44,7 +44,15 @@ const GenNode = memo(/** @param {import('@xyflow/react').NodeProps<GeneratorFlow
   const { node, text } = data;
   const def = NODE_TYPES[node.type];
   return (
-    <div className={`gnode ${selected ? 'sel' : ''} ${node.enabled ? '' : 'off'}`} style={{ '--c': def.color }}>
+    <div
+      className={`gnode ${selected ? 'sel' : ''} ${node.enabled ? '' : 'off'}`}
+      style={{ '--c': def.color }}
+      onDoubleClick={(e) => {
+        e.stopPropagation();
+        useStore.getState().select({ type: 'node', id: node.id });
+        useStore.getState().setMobilePanel('inspector');
+      }}
+    >
       {def.accepts.length > 0 && <Handle type="target" position={Position.Top} className="ghandle" />}
       <div className="gnode-head">
         <span className="gnode-icon"><NodeIcon type={node.type} size={13} /></span>
@@ -305,6 +313,7 @@ function Graph() {
   );
 
   const selectedNode = selection?.type === 'node' ? doc.nodes.find((n) => n.id === selection.id) : doc.nodes.find((n) => n.type === 'tree');
+  const selectedDef = selectedNode ? NODE_TYPES[selectedNode.type] : null;
 
   return (
     <div className="graph" ref={wrap}>
@@ -320,25 +329,16 @@ function Graph() {
           <Plus size={14} /> Add
         </button>
         {selectedNode && (
-          <>
-            <button
-              className="tb-btn"
-              title="Node actions (duplicate, disconnect, delete)"
-              onClick={(e) => {
-                const r = e.currentTarget.getBoundingClientRect();
-                openNodeMenu(r.left, r.bottom + 4, selectedNode);
-              }}
-            >
-              <MoreHorizontal size={14} /> Actions
-            </button>
-            <button
-              className="tb-btn mobile-only-inline"
-              title="Edit selected node parameters"
-              onClick={() => store.setMobilePanel('inspector')}
-            >
-              <SlidersHorizontal size={13} /> Inspect
-            </button>
-          </>
+          <button
+            className="tb-btn"
+            title="Node actions (duplicate, disconnect, delete)"
+            onClick={(e) => {
+              const r = e.currentTarget.getBoundingClientRect();
+              openNodeMenu(r.left, r.bottom + 4, selectedNode);
+            }}
+          >
+            <MoreHorizontal size={14} /> Actions
+          </button>
         )}
         <button className="tb-btn" title="Tidy layout" onClick={() => { store.tidyLayout(); setTimeout(() => rf.fitView({ padding: 0.2, duration: 300 }), 30); }}>
           <LayoutGrid size={14} /> Tidy
@@ -375,6 +375,58 @@ function Graph() {
         <Controls showInteractive={false} position="bottom-left" />
         <MiniMap pannable zoomable position="bottom-right" nodeColor={/** @param {GeneratorFlowNode} n */ (n) => NODE_TYPES[n.data.node.type].color} maskColor="rgba(10,12,15,0.7)" style={{ width: 120, height: 80 }} />
       </ReactFlow>
+
+      {selectedNode && selectedDef && (
+        <div className="graph-sel-bar">
+          <button
+            className="graph-sel-edit"
+            style={{ '--c': selectedDef.color }}
+            onClick={() => store.setMobilePanel('inspector')}
+            title="Edit selected node in Inspector"
+          >
+            <SlidersHorizontal size={13} />
+            <span>Edit <b>{selectedNode.name}</b></span>
+          </button>
+          {canHaveChildren(selectedNode.type) && (
+            <button
+              className="tb-btn"
+              title={`Add child to ${selectedNode.name}`}
+              onClick={(e) => {
+                const r = e.currentTarget.getBoundingClientRect();
+                openAddMenu(r.left, r.top - 120, selectedNode.id);
+              }}
+            >
+              <Plus size={13} /> Child
+            </button>
+          )}
+          {!selectedDef.singleton && (
+            <>
+              <button
+                className="icon-btn"
+                title={selectedNode.enabled ? 'Disable' : 'Enable'}
+                onClick={() => store.setNodeProps(selectedNode.id, { enabled: !selectedNode.enabled })}
+              >
+                {selectedNode.enabled ? <Eye size={14} /> : <EyeOff size={14} />}
+              </button>
+              <button
+                className="icon-btn"
+                title="Duplicate with children"
+                onClick={() => store.duplicateNode(selectedNode.id)}
+              >
+                <Copy size={14} />
+              </button>
+              <button
+                className="icon-btn danger"
+                title="Delete node"
+                onClick={() => store.deleteNodes([selectedNode.id])}
+              >
+                <Trash2 size={14} />
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
       {menu && <Menu menu={menu} onClose={() => setMenu(null)} boundsRef={wrap} />}
     </div>
   );

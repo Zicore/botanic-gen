@@ -4,7 +4,7 @@ import { useStore, treeSeed } from '../state/store.js';
 import { PRESETS } from '../tree/presets.js';
 import { exportGLB, exportGodotPackage, exportTexturesZip, saveProject, loadProjectFile } from '../export/exporters.js';
 
-function Dropdown({ label, icon, children, align = 'left', className = '' }) {
+function Dropdown({ label, mobileLabel = undefined, icon, children, align = 'left', className = '' }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   useEffect(() => {
@@ -18,7 +18,8 @@ function Dropdown({ label, icon, children, align = 'left', className = '' }) {
       <button className="tb-btn" onClick={() => setOpen(!open)}>
         {icon}
         <span className="tb-label">{label}</span>
-        <ChevronDown size={13} className="dim" />
+        {mobileLabel && <span className="tb-label-mobile">{mobileLabel}</span>}
+        <ChevronDown size={13} className="dim tb-chev" />
       </button>
       {open && (
         <div className={`dd-menu ${align}`} onClick={() => setOpen(false)}>
@@ -62,15 +63,19 @@ export function TopBar() {
       </div>
 
       <div className="tb-group">
-        <Dropdown label="Species" icon={<Trees size={14} />}>
+        <Dropdown label="Species" mobileLabel={doc.name || 'Species'} icon={<Trees size={14} />}>
           <div className="dd-title">Load preset (undoable)</div>
-          {Object.entries(PRESETS).filter(([, p]) => !p.group).map(([k, p]) => (
-            <button key={k} className="dd-item" onClick={() => loadPreset(k)}>{p.label}</button>
-          ))}
+          <div className="dd-grid">
+            {Object.entries(PRESETS).filter(([, p]) => !p.group).map(([k, p]) => (
+              <button key={k} className="dd-item" onClick={() => loadPreset(k)}>{p.label}</button>
+            ))}
+          </div>
           <div className="dd-title">City builder · low-poly</div>
-          {Object.entries(PRESETS).filter(([, p]) => p.group === 'city').map(([k, p]) => (
-            <button key={k} className="dd-item" onClick={() => loadPreset(k)}>{p.label}</button>
-          ))}
+          <div className="dd-grid">
+            {Object.entries(PRESETS).filter(([, p]) => p.group === 'city').map(([k, p]) => (
+              <button key={k} className="dd-item" onClick={() => loadPreset(k)}>{p.label}</button>
+            ))}
+          </div>
         </Dropdown>
         <input className="doc-name" value={doc.name} onChange={(e) => renameDocument(e.target.value)} spellCheck={false} />
       </div>
@@ -79,11 +84,16 @@ export function TopBar() {
         <div className="seed">
           <span className="dim seed-label">Seed</span>
           <input
+            className="seed-input"
             type="number"
             value={seed}
             onChange={(e) => setNodeParam(treeId, 'seed', Math.max(0, parseInt(e.target.value || '0', 10)))}
           />
-          <button className="icon-btn" title="Random seed" onClick={() => setNodeParam(treeId, 'seed', Math.floor(Math.random() * 999999))}>
+          <button
+            className="icon-btn seed-dice"
+            title={`Randomize seed (current: ${seed})`}
+            onClick={() => setNodeParam(treeId, 'seed', Math.floor(Math.random() * 999999))}
+          >
             <Dices size={15} />
           </button>
         </div>
@@ -95,14 +105,30 @@ export function TopBar() {
 
       <div className="tb-group">
         <Dropdown label="Project" icon={<FolderOpen size={14} />} align="right">
-          <div className="dd-title">Tree name</div>
+          <div className="dd-title">Tree name & seed</div>
           <div className="dd-input-wrap" onClick={(e) => e.stopPropagation()}>
             <input
               className="dd-doc-name"
               value={doc.name}
+              placeholder="Tree name"
               onChange={(e) => renameDocument(e.target.value)}
               spellCheck={false}
             />
+            <div className="dd-seed-row">
+              <span className="dim">Seed</span>
+              <input
+                className="dd-seed-input"
+                type="number"
+                value={seed}
+                onChange={(e) => setNodeParam(treeId, 'seed', Math.max(0, parseInt(e.target.value || '0', 10)))}
+              />
+              <button
+                className="tb-btn"
+                onClick={() => setNodeParam(treeId, 'seed', Math.floor(Math.random() * 999999))}
+              >
+                <Dices size={13} /> Random
+              </button>
+            </div>
           </div>
           <div className="dd-title">Project file</div>
           <button className="dd-item" onClick={() => saveProject(doc)}><Save size={14} /> Save project (.json)</button>
@@ -119,7 +145,7 @@ export function TopBar() {
             if (f) useStore.getState().loadDocument(await loadProjectFile(f));
           }}
         />
-        <Dropdown label={busy ? `${busy}…` : 'Export'} icon={<Download size={14} />} align="right" className="primary">
+        <Dropdown label={busy ? `${busy}…` : 'Export'} mobileLabel={busy ? '…' : 'Export'} icon={<Download size={14} />} align="right" className="primary">
           <div className="dd-title">Game engine</div>
           <button className="dd-item" onClick={() => run('Godot', () => exportGodotPackage(doc))}>
             <Package size={14} />

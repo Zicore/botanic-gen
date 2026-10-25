@@ -44,17 +44,44 @@ export function ViewportOverlay() {
   return (
     <>
       <div className="vp-top-left">
-        <div className="segmented small">
+        {/* Desktop segmented bars */}
+        <div className="segmented small vp-desktop-seg">
           {MODES.map(([k, l]) => (
             <button key={k} className={view.mode === k ? 'active' : ''} onClick={() => setView({ mode: k })}>{l}</button>
           ))}
         </div>
-        <div className="segmented small" title="Preview the exported LODs (LOD3 = billboard impostor). Auto switches by camera distance with the Godot visibility ranges.">
+        <div className="segmented small vp-desktop-seg" title="Preview the exported LODs (LOD3 = billboard impostor). Auto switches by camera distance with the Godot visibility ranges.">
           {LODS.map(([k, l]) => (
             <button key={k} className={view.lod === k ? 'active' : ''} onClick={() => setView({ lod: k })}>
               {view.lod === 'auto' && k === activeLod ? <u>{l}</u> : l}
             </button>
           ))}
+        </div>
+
+        {/* Mobile compact glass pills */}
+        <div className="vp-mobile-pills">
+          <select
+            className="vp-pill-select"
+            aria-label="View mode"
+            value={view.mode}
+            onChange={(e) => setView({ mode: e.target.value })}
+          >
+            {MODES.map(([k, l]) => (
+              <option key={k} value={k}>{l}</option>
+            ))}
+          </select>
+          <select
+            className="vp-pill-select"
+            aria-label="LOD level"
+            value={String(view.lod)}
+            onChange={(e) => setView({ lod: e.target.value === 'auto' ? 'auto' : Number(e.target.value) })}
+          >
+            {LODS.map(([k, l]) => (
+              <option key={String(k)} value={String(k)}>
+                {view.lod === 'auto' && k === activeLod ? `${l} (L${activeLod})` : l}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -65,9 +92,11 @@ export function ViewportOverlay() {
           </button>
           {envOpen && (
             <div className="env-pop">
-              <div className="env-title"><Sun size={13} /> Sun</div>
+              <div className="env-title"><Sun size={13} /> Sun & scene</div>
               <NumberField label="Azimuth" value={view.sunAzimuth} min={0} max={360} step={1} suffix="°" onChange={(v) => setView({ sunAzimuth: v })} />
               <NumberField label="Elevation" value={view.sunElevation} min={2} max={88} step={1} suffix="°" onChange={(v) => setView({ sunElevation: v })} />
+              <Toggle label="Ground plane" value={!!view.ground} onChange={(v) => setView({ ground: v })} />
+              <Toggle label="Turntable spin" value={!!view.autoRotate} onChange={(v) => setView({ autoRotate: v })} />
               <div className="env-title"><Wind size={13} /> Wind preview</div>
               <NumberField label="Strength" value={view.wind} min={0} max={2} step={0.01} onChange={(v) => setView({ wind: v })} />
               <NumberField label="Direction" value={view.windDir} min={0} max={360} step={1} suffix="°" onChange={(v) => setView({ windDir: v })} />
@@ -93,7 +122,7 @@ export function ViewportOverlay() {
                 min={0}
                 max={1.5}
                 step={0.01}
-                hint="Pivots leaf cards around their center toward the camera"
+                hint="Gently opens edge-on leaf cards toward the camera"
                 onChange={(v) => setView({ leafPuff: v, leafVolume: true })}
               />
             </div>
@@ -112,10 +141,10 @@ export function ViewportOverlay() {
         <button className={`icon-btn glass ${view.skeleton ? 'active' : ''}`} title="Skeleton overlay" onClick={() => setView({ skeleton: !view.skeleton })}>
           <Bone size={16} />
         </button>
-        <button className={`icon-btn glass ${view.ground ? 'active' : ''}`} title="Ground" onClick={() => setView({ ground: !view.ground })}>
+        <button className={`icon-btn glass vp-desktop-only ${view.ground ? 'active' : ''}`} title="Ground" onClick={() => setView({ ground: !view.ground })}>
           <Mountain size={16} />
         </button>
-        <button className={`icon-btn glass ${view.autoRotate ? 'active' : ''}`} title="Turntable" onClick={() => setView({ autoRotate: !view.autoRotate })}>
+        <button className={`icon-btn glass vp-desktop-only ${view.autoRotate ? 'active' : ''}`} title="Turntable" onClick={() => setView({ autoRotate: !view.autoRotate })}>
           <RotateCw size={16} />
         </button>
         <button className="icon-btn glass" title="Frame tree (F)" onClick={() => engine.viewer?.frame()}>
@@ -145,10 +174,10 @@ export function ViewportOverlay() {
               <span><b>LOD{activeLod}</b>{activeLod === 3 ? ' billboard' : ''}{lodDistance != null ? ` · ${lodDistance.toFixed(0)} m` : ''}</span>
             )}
             <span><b>{fmt(s.triangles)}</b> tris</span>
-            <span><b>{fmt(s.vertices)}</b> verts</span>
-            <span><b>{s.drawCalls}</b> draws</span>
+            <span className="vp-stat-extra"><b>{fmt(s.vertices)}</b> verts</span>
+            <span className="vp-stat-extra"><b>{s.drawCalls}</b> draws</span>
             <span><b>{fmt(s.leaves || 0)}</b> leaves</span>
-            <span className="dim">gen {s.ms} ms{bakeMs ? ` · bake ${bakeMs} ms` : ''}</span>
+            <span className="dim vp-stat-extra">gen {s.ms} ms{bakeMs ? ` · bake ${bakeMs} ms` : ''}</span>
           </>
         ) : (
           <span className="dim">Generating…</span>

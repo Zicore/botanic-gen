@@ -88,7 +88,7 @@ export function NumberField({ label, value, min, max, step = 0.01, onChange, onR
   );
 }
 
-export function Toggle({ label, value, onChange, hint }) {
+export function Toggle({ label, value, onChange, hint = undefined }) {
   return (
     <div className="field field-inline">
       <label className="field-label" title={hint}>{label}</label>
