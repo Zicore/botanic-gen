@@ -237,7 +237,10 @@ export const NODE_TYPES = {
       },
       {
         name: 'Lighting',
-        params: [f('normalBlend', 'Canopy normals', 0.55, 0, 1, 0.01, { hint: 'Blend card normals toward the canopy hull for soft, volumetric shading.' })],
+        params: [
+          f('normalBlend', 'Canopy normals', 0.55, 0, 1, 0.01, { hint: 'Blend card normals outward from card, branch-cluster, and canopy centers for soft, volumetric shading.' }),
+          f('cardPuff', 'Center puff (billboard)', 0.45, 0, 1, 0.01, { hint: 'Pivots leaf cards around their center toward the camera so edge-on cards look full.' }),
+        ],
       },
       { name: 'Wind', params: [f('flutter', 'Flutter', 0.7, 0, 1)] },
       { name: 'Material', params: [m('material', 'Leaf', 'leaf')] },

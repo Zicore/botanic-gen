@@ -325,6 +325,8 @@ export async function buildGodotPackage(doc) {
         'shader_parameter/translucency_texture': 'ExtResource("5_trans")',
         'shader_parameter/alpha_cutoff': P.alphaCutoff.toFixed(3),
         'shader_parameter/subsurface_color': gdColor(P.colorSubsurface),
+        'shader_parameter/card_puff': (results[0].groups.find((g) => g.materialId === m.id)?.cardPuff ?? 0.45).toFixed(3),
+        'shader_parameter/card_size': (results[0].groups.find((g) => g.materialId === m.id)?.cardSize ?? 0.5).toFixed(3),
         'shader_parameter/tree_height': height.toFixed(3),
       });
     }

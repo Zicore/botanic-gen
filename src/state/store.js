@@ -6,7 +6,7 @@ import { PRESETS } from '../tree/presets.js';
 import { makeNode, makeMaterial, canParent, isDescendant, autoLayout, normalizeDoc, uid } from '../tree/document.js';
 import { NODE_TYPES } from '../tree/schema.js';
 
-const STORAGE_KEY = 'botanica.v2.doc';
+const STORAGE_KEY = 'botanica.v4.doc';
 const HISTORY_LIMIT = 150;
 const COALESCE_MS = 600;
 
@@ -75,6 +75,9 @@ export const useStore = create((set, get) => {
       skeleton: false,
       ground: true,
       autoRotate: false,
+      leafVolume: true,
+      centerNormals: 1.0,
+      leafPuff: 1.0,
       lod: 0, // 0 | 1 | 2 | 'auto' (by camera distance, same ranges as the Godot export)
     },
     result: null,

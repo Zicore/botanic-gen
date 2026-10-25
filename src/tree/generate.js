@@ -38,6 +38,8 @@ class MeshBuilder {
     this.materialId = materialId;
     this.pos = [];
     this.nrm = [];
+    this.rawNrm = [];
+    this.cardOff = [];
     this.tan = [];
     this.uv = [];
     this.uv2 = [];
@@ -48,7 +50,11 @@ class MeshBuilder {
   get vertexCount() {
     return this.pos.length / 3;
   }
-  vertex(p, n, t, w, u, v, u2x, u2y, tint, occl = 1) {
+  vertex(p, n, t, w, u, v, u2x, u2y, tint, occl = 1, rawN = null, cardOff = null) {
+    const rn = rawN || n;
+    this.rawNrm.push(rn.x, rn.y, rn.z);
+    if (cardOff) this.cardOff.push(cardOff.x, cardOff.y, cardOff.z);
+    else this.cardOff.push(0, 0, 0);
     this.pos.push(p.x, p.y, p.z);
     this.nrm.push(n.x, n.y, n.z);
     this.tan.push(t.x, t.y, t.z, w);
@@ -833,12 +839,15 @@ function meshLeaves(node, parentSpines, b, mat, ctx) {
   const grow = ctx.grow ?? 1;
 
   const X = new Vector3(), Dv = new Vector3(), Nv = new Vector3(), pos = new Vector3();
-  const wp = new Vector3(), wn = new Vector3(), wt = new Vector3();
+  const wp = new Vector3(), wn = new Vector3(), rawWn = new Vector3(), wt = new Vector3();
+  const cardCenter = new Vector3(), cardOff = new Vector3(), clusterN = new Vector3();
 
   parentSpines.forEach((parent, pi) => {
     const rng = new Rng(hashInts(ctx.treeSeed, hashString(node.id), pi, parent.seed));
     const positions = spawnPositions(P, parent.length, refLength, rng);
     if (P.tipLeaf) positions.push({ t: 1, phi: rng.range(0, Math.PI * 2), tip: true });
+    const midAt = parent.sample(clamp(0.5 * (P.start + P.end), 0, 1));
+    const clusterCenter = midAt.p.clone().addScaledVector(midAt.T, P.size * scale * 0.25);
 
     for (const sp of positions) {
       if (count >= ctx.budget) {
@@ -885,19 +894,36 @@ function meshLeaves(node, parentSpines, b, mat, ctx) {
       const flexBase = parent.flexAt(sp.t);
       const flutter = P.flutter;
       const base = b.vertexCount;
+      cardCenter.copy(pos).addScaledVector(Dv, 0.42 * size);
+      const nb = P.normalBlend ?? 0.55;
 
       for (let vi = 0; vi < tpl.verts.length; vi++) {
         const v = tpl.verts[vi];
         wp.copy(pos).addScaledVector(X, v.x * size).addScaledVector(Dv, v.y * size).addScaledVector(Nv, v.z * size);
         const tn = tpl.nrm[vi], tt = tpl.tan[vi];
         wn.set(0, 0, 0).addScaledVector(X, tn.x).addScaledVector(Dv, tn.y).addScaledVector(Nv, tn.z).normalize();
+        rawWn.copy(Nv);
+        cardOff.subVectors(wp, cardCenter);
+        if (nb > 0) {
+          const rx = (v.lx / Math.max(0.1, layout.aspect)) * 2;
+          const ry = (v.ly - 0.45) * 2;
+          wn.addScaledVector(X, rx * 0.36 * nb).addScaledVector(Dv, ry * 0.26 * nb).normalize();
+          clusterN.subVectors(wp, clusterCenter);
+          if (clusterN.lengthSq() > 1e-6) {
+            clusterN.normalize();
+            if (wn.dot(clusterN) < 0) wn.negate();
+            wn.lerp(clusterN, nb * 0.42).normalize();
+          }
+        }
         wt.set(0, 0, 0).addScaledVector(X, tt.x).addScaledVector(Dv, tt.y).addScaledVector(Nv, tt.z);
         wt.addScaledVector(wn, -wt.dot(wn)).normalize();
         const [u, vv] = leafUV(cell, layout.aspect, v.lx, v.ly);
-        b.vertex(wp, wn, wt, 1, u, vv, flexBase, flutter * v.ly, tint);
+        b.vertex(wp, wn, wt, 1, u, vv, flexBase, flutter * v.ly, tint, 1, rawWn, cardOff);
       }
       for (const k of tpl.idx) b.idx.push(base + k);
       b.normalBlend = Math.max(b.normalBlend ?? 0, P.normalBlend);
+      b.cardPuff = Math.max(b.cardPuff ?? 0, P.cardPuff ?? 0.45);
+      b.cardSize = Math.max(b.cardSize ?? 0, P.size * scale);
       count++;
     }
   });
@@ -1100,7 +1126,7 @@ function finalize(builders, G) {
           n.set(nrm[v * 3], nrm[v * 3 + 1], nrm[v * 3 + 2]);
           // keep the card's facing hemisphere so lighting does not invert on the back side
           if (blend >= 0.25 && n.dot(hullN) < 0) n.negate();
-          n.lerp(hullN, blend).normalize();
+          n.lerp(hullN, blend * 0.68).normalize();
           nrm[v * 3] = n.x; nrm[v * 3 + 1] = n.y; nrm[v * 3 + 2] = n.z;
           t.set(tan[v * 4], tan[v * 4 + 1], tan[v * 4 + 2]);
           t.addScaledVector(n, -t.dot(n));
@@ -1145,6 +1171,8 @@ function finalize(builders, G) {
       key: b.key,
       kind: b.kind,
       materialId: b.materialId,
+      cardPuff: b.cardPuff ?? 0.45,
+      cardSize: b.cardSize ?? 0.5,
       attributes: {
         position: new Float32Array(b.pos),
         normal: nrm,
@@ -1152,6 +1180,12 @@ function finalize(builders, G) {
         uv: new Float32Array(b.uv),
         uv1: uv2,
         color,
+        ...(b.kind === 'leaf'
+          ? {
+              rawNormal: new Float32Array(b.rawNrm),
+              cardOffset: new Float32Array(b.cardOff),
+            }
+          : {}),
       },
       index,
     });

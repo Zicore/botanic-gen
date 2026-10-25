@@ -49,8 +49,22 @@ uniform float translucency : hint_range(0.0, 4.0) = 1.0;
 // Keep the (canopy-blended) vertex normal on back faces instead of flipping it.
 // Gives soft, volumetric canopy shading; disable for physically flipped normals.
 uniform bool keep_back_normals = true;
+uniform float card_puff : hint_range(0.0, 1.0) = 0.45;
+uniform float card_size : hint_range(0.05, 4.0) = 0.55;
+uniform vec2 atlas_grid = vec2(2.0, 2.0);
 ${WIND}
 void vertex() {
+	if (card_puff > 0.001) {
+		vec2 cell_uv = fract(UV * atlas_grid) - vec2(0.5, 0.55);
+		vec3 dP = (TANGENT * cell_uv.x - BINORMAL * cell_uv.y) * card_size;
+		vec3 cam = (inverse(MODEL_MATRIX) * vec4(INV_VIEW_MATRIX[3].xyz, 1.0)).xyz;
+		vec3 V = normalize(cam - (VERTEX - dP));
+		vec3 cardN = normalize(cross(BINORMAL, TANGENT));
+		float grazing = 1.0 - abs(dot(cardN, V));
+		float k = clamp(card_puff * grazing * 0.65, 0.0, 0.75);
+		vec3 dP_rot = (dP + cardN * dot(dP, V) * k) * inversesqrt(1.0 + k * k * grazing);
+		VERTEX += dP_rot - dP;
+	}
 	VERTEX = botanica_wind(VERTEX, NORMAL, UV2, TIME * wind_speed, NODE_POSITION_WORLD);
 }
 

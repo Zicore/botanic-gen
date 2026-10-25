@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Sun, Wind, Bone, Maximize, Camera, RotateCw, Mountain } from 'lucide-react';
+import { Sun, Wind, Bone, Maximize, Camera, RotateCw, Mountain, Sparkles } from 'lucide-react';
 import { useStore } from '../state/store.js';
 import { engine } from '../state/engine.js';
-import { NumberField } from './controls/NumberField.jsx';
+import { NumberField, Toggle } from './controls/NumberField.jsx';
 
 const LODS = [
   [0, 'LOD0'],
@@ -60,7 +60,7 @@ export function ViewportOverlay() {
 
       <div className="vp-top-right">
         <div className="env" ref={envRef}>
-          <button className={`icon-btn glass ${envOpen ? 'active' : ''}`} title="Sun & wind" onClick={() => setEnvOpen(!envOpen)}>
+          <button className={`icon-btn glass ${envOpen ? 'active' : ''}`} title="Sun, wind & foliage shader" onClick={() => setEnvOpen(!envOpen)}>
             <Sun size={16} />
           </button>
           {envOpen && (
@@ -71,9 +71,41 @@ export function ViewportOverlay() {
               <div className="env-title"><Wind size={13} /> Wind preview</div>
               <NumberField label="Strength" value={view.wind} min={0} max={2} step={0.01} onChange={(v) => setView({ wind: v })} />
               <NumberField label="Direction" value={view.windDir} min={0} max={360} step={1} suffix="°" onChange={(v) => setView({ windDir: v })} />
+              <div className="env-title"><Sparkles size={13} /> Foliage volume shader</div>
+              <Toggle
+                label="Center volume"
+                value={view.leafVolume !== false}
+                hint="Toggle center-calculated normals and camera card puffing"
+                onChange={(v) => setView({ leafVolume: v })}
+              />
+              <NumberField
+                label="Center normals"
+                value={view.centerNormals ?? 1}
+                min={0}
+                max={1}
+                step={0.01}
+                hint="0 = flat card normals, 1 = spherical cluster & canopy normals"
+                onChange={(v) => setView({ centerNormals: v, leafVolume: true })}
+              />
+              <NumberField
+                label="Card puff"
+                value={view.leafPuff ?? 1}
+                min={0}
+                max={1.5}
+                step={0.01}
+                hint="Pivots leaf cards around their center toward the camera"
+                onChange={(v) => setView({ leafPuff: v, leafVolume: true })}
+              />
             </div>
           )}
         </div>
+        <button
+          className={`icon-btn glass ${view.leafVolume !== false ? 'active' : ''}`}
+          title="Toggle foliage center-normals & camera puff shader"
+          onClick={() => setView({ leafVolume: view.leafVolume === false })}
+        >
+          <Sparkles size={16} />
+        </button>
         <button className={`icon-btn glass ${view.wind > 0 ? 'active' : ''}`} title="Toggle wind" onClick={() => setView({ wind: view.wind > 0 ? 0 : 0.35 })}>
           <Wind size={16} />
         </button>

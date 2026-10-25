@@ -1,5 +1,5 @@
-// Viewport materials: MeshStandardMaterial + wind (vertex) + translucency (per light, shadowed).
-// The wind math mirrors export/godot shaders so the preview matches the engine.
+// Viewport materials: MeshStandardMaterial + wind (vertex) + center-calculated foliage volume/puff + translucency.
+// The wind and foliage math mirrors export/godot shaders so the preview matches the engine.
 
 import * as THREE from 'three';
 
@@ -8,6 +8,11 @@ export const windUniforms = {
   uWindStrength: { value: 0.5 },
   uWindDir: { value: new THREE.Vector2(1, 0.3).normalize() },
   uTreeHeight: { value: 10 },
+};
+
+export const foliageUniforms = {
+  uCenterNormals: { value: 1.0 },
+  uCardPuff: { value: 1.0 },
 };
 
 export const WIND_GLSL = /* glsl */ `
@@ -39,11 +44,53 @@ vec3 botanicaWind(vec3 p, vec3 n, vec2 w) {
 }
 `;
 
+export const FOLIAGE_PUFF_GLSL = /* glsl */ `
+uniform float uCenterNormals;
+uniform float uCardPuff;
+uniform float uMeshPuff;
+attribute vec3 rawNormal;
+attribute vec3 cardOffset;
+
+// Shortest-arc rotation of a leaf card around its own center (p - dP) toward the camera,
+// preserving the card's individual roll, curl, and size while opening up edge-on cards.
+vec3 botanicaPuff(vec3 p, vec3 dP, vec3 cardN, float puff) {
+  if (puff <= 0.001 || dot(dP, dP) < 1e-8) return p;
+  bool ortho = projectionMatrix[3][3] == 1.0;
+  vec3 camPos = (inverse(modelViewMatrix) * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+  vec3 viewDir = ortho
+    ? normalize(vec3(modelViewMatrix[0][2], modelViewMatrix[1][2], modelViewMatrix[2][2]))
+    : normalize(camPos - (p - dP));
+  vec3 n0 = dot(cardN, cardN) > 0.01 ? normalize(cardN) : vec3(0.0, 1.0, 0.0);
+  float grazing = 1.0 - abs(dot(n0, viewDir));
+  float k = clamp(puff * grazing * 0.65, 0.0, 0.75);
+  vec3 dP_rot = (dP + n0 * dot(dP, viewDir) * k) * inversesqrt(1.0 + k * k * grazing);
+  return p + (dP_rot - dP);
+}
+`;
+
 function patchWind(shader) {
   Object.assign(shader.uniforms, windUniforms);
   shader.vertexShader = shader.vertexShader
     .replace('#include <common>', `#include <common>\n${WIND_GLSL}`)
     .replace('#include <begin_vertex>', `#include <begin_vertex>\ntransformed = botanicaWind(transformed, objectNormal, wind);`);
+}
+
+function patchLeafVertex(shader, extra) {
+  Object.assign(shader.uniforms, windUniforms, foliageUniforms, extra);
+  shader.vertexShader = shader.vertexShader
+    .replace('#include <common>', `#include <common>\n${WIND_GLSL}\n${FOLIAGE_PUFF_GLSL}`)
+    .replace(
+      '#include <beginnormal_vertex>',
+      `#include <beginnormal_vertex>
+      vec3 botanicaRawN = dot(rawNormal, rawNormal) > 0.01 ? normalize(rawNormal) : objectNormal;
+      objectNormal = normalize(mix(botanicaRawN, objectNormal, uCenterNormals));`,
+    )
+    .replace(
+      '#include <begin_vertex>',
+      `#include <begin_vertex>
+      transformed = botanicaPuff(transformed, cardOffset, botanicaRawN, uCardPuff * uMeshPuff);
+      transformed = botanicaWind(transformed, objectNormal, wind);`,
+    );
 }
 
 export function createBarkMaterial(maps, name = 'Bark') {
@@ -64,7 +111,7 @@ export function createBarkMaterial(maps, name = 'Bark') {
   return mat;
 }
 
-export function createLeafMaterial(maps, params, name = 'Leaves', { noFlip = 0.5 } = {}) {
+export function createLeafMaterial(maps, params, name = 'Leaves', { noFlip = 0.85, cardPuff = 0.45 } = {}) {
   const mat = new THREE.MeshPhysicalMaterial({
     specularIntensity: 0.28,
     name,
@@ -85,11 +132,11 @@ export function createLeafMaterial(maps, params, name = 'Leaves', { noFlip = 0.5
     uTranslucency: { value: 1.0 },
     uSubsurface: { value: new THREE.Color(params?.colorSubsurface ?? '#a8c43c') },
     uNoFlip: { value: noFlip },
+    uMeshPuff: { value: cardPuff },
   };
   mat.userData.uniforms = extra;
   mat.onBeforeCompile = (shader) => {
-    patchWind(shader);
-    Object.assign(shader.uniforms, extra);
+    patchLeafVertex(shader, extra);
     const lights = THREE.ShaderChunk.lights_fragment_begin.replaceAll(
       'RE_Direct( directLight, geometryPosition, geometryNormal, geometryViewDir, geometryClearcoatNormal, material, reflectedLight );',
       `RE_Direct( directLight, geometryPosition, geometryNormal, geometryViewDir, geometryClearcoatNormal, material, reflectedLight );
@@ -101,7 +148,7 @@ export function createLeafMaterial(maps, params, name = 'Leaves', { noFlip = 0.5
     );
     const normalBegin = THREE.ShaderChunk.normal_fragment_begin.replace(
       'normal *= faceDirection;',
-      'normal *= uNoFlip > 0.5 ? 1.0 : faceDirection;',
+      'normal *= (uNoFlip * uCenterNormals) > 0.5 ? 1.0 : faceDirection;',
     );
     shader.fragmentShader = shader.fragmentShader
       .replace(
@@ -110,7 +157,8 @@ export function createLeafMaterial(maps, params, name = 'Leaves', { noFlip = 0.5
         uniform sampler2D uTranslucencyMap;
         uniform float uTranslucency;
         uniform vec3 uSubsurface;
-        uniform float uNoFlip;`,
+        uniform float uNoFlip;
+        uniform float uCenterNormals;`,
       )
       .replace(
         '#include <map_fragment>',
@@ -137,7 +185,7 @@ export function createLeafMaterial(maps, params, name = 'Leaves', { noFlip = 0.5
       .replace('#include <normal_fragment_begin>', normalBegin)
       .replace('#include <lights_fragment_begin>', lights);
   };
-  mat.customProgramCacheKey = () => 'botanica-leaf-v2';
+  mat.customProgramCacheKey = () => 'botanica-leaf-v3';
 
   const depth = new THREE.MeshDepthMaterial({
     depthPacking: THREE.RGBADepthPacking,
@@ -146,11 +194,17 @@ export function createLeafMaterial(maps, params, name = 'Leaves', { noFlip = 0.5
     side: THREE.DoubleSide,
   });
   depth.onBeforeCompile = (shader) => {
-    Object.assign(shader.uniforms, windUniforms);
+    Object.assign(shader.uniforms, windUniforms, foliageUniforms, extra);
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', `#include <common>\n${WIND_GLSL}`)
-      .replace('#include <begin_vertex>', `#include <begin_vertex>\ntransformed = botanicaWind(transformed, normal, wind);`);
+      .replace('#include <common>', `#include <common>\n${WIND_GLSL}\n${FOLIAGE_PUFF_GLSL}`)
+      .replace(
+        '#include <begin_vertex>',
+        `#include <begin_vertex>
+        transformed = botanicaPuff(transformed, cardOffset, rawNormal, uCardPuff * uMeshPuff * 0.5);
+        transformed = botanicaWind(transformed, normal, wind);`,
+      );
   };
+  depth.customProgramCacheKey = () => 'botanica-leaf-depth-v3';
   mat.userData.depthMaterial = depth;
   return mat;
 }

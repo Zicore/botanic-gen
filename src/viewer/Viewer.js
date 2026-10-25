@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { Sky } from 'three/examples/jsm/objects/Sky.js';
-import { createBarkMaterial, createLeafMaterial, barkDepthMaterial, windUniforms } from './materials.js';
+import { createBarkMaterial, createLeafMaterial, barkDepthMaterial, windUniforms, foliageUniforms } from './materials.js';
 import { lodRanges, LOD_COUNT, IMPOSTOR_LEVEL } from '../export/lod.js';
 import { createImpostorMesh } from '../impostor/impostor.js';
 
@@ -225,6 +225,9 @@ export class Viewer {
     const prev = this.view;
     this.view = { ...this.view, ...view };
     windUniforms.uWindStrength.value = this.view.wind;
+    const volOn = this.view.leafVolume !== false;
+    foliageUniforms.uCenterNormals.value = volOn ? (this.view.centerNormals ?? 1.0) : 0.0;
+    foliageUniforms.uCardPuff.value = volOn ? (this.view.leafPuff ?? 1.0) : 0.0;
     const a = this.view.windDir * DEG;
     windUniforms.uWindDir.value.set(Math.cos(a), Math.sin(a));
     if (prev.sunAzimuth !== this.view.sunAzimuth || prev.sunElevation !== this.view.sunElevation) {
@@ -271,7 +274,7 @@ export class Viewer {
     if (!hadMap) mat.needsUpdate = true;
   }
 
-  getMaterial(kind, materialId, noFlip) {
+  getMaterial(kind, materialId, noFlip, cardPuff = 0.45) {
     const key = `${kind}|${materialId}`;
     let mat = this.materials.get(key);
     if (!mat) {
@@ -280,7 +283,10 @@ export class Viewer {
       if (t) this.assignMaps(mat, t);
       this.materials.set(key, mat);
     }
-    if (kind === 'leaf') mat.userData.uniforms.uNoFlip.value = noFlip;
+    if (kind === 'leaf') {
+      mat.userData.uniforms.uNoFlip.value = noFlip;
+      mat.userData.uniforms.uMeshPuff.value = cardPuff;
+    }
     return mat;
   }
 
@@ -306,9 +312,11 @@ export class Viewer {
       geo.setAttribute('uv1', windAttr);
       geo.setAttribute('wind', windAttr);
       geo.setAttribute('color', new THREE.BufferAttribute(A.color, 4));
+      if (A.rawNormal) geo.setAttribute('rawNormal', new THREE.BufferAttribute(A.rawNormal, 3));
+      if (A.cardOffset) geo.setAttribute('cardOffset', new THREE.BufferAttribute(A.cardOffset, 3));
       geo.setIndex(new THREE.BufferAttribute(g.index, 1));
       geo.computeBoundingSphere();
-      const mat = this.getMaterial(g.kind, g.materialId, g.kind === 'leaf' ? 0.85 : 0);
+      const mat = this.getMaterial(g.kind, g.materialId, g.kind === 'leaf' ? 0.85 : 0, g.cardPuff ?? 0.45);
       const mesh = new THREE.Mesh(geo, mat);
       mesh.name = g.kind === 'bark' ? 'Bark' : 'Leaves';
       mesh.userData.group = g;
@@ -425,7 +433,7 @@ export class Viewer {
     for (const mesh of this.meshes()) {
       if (mesh.userData.impostor) continue;
       const g = mesh.userData.group;
-      const lit = this.getMaterial(g.kind, g.materialId, g.kind === 'leaf' ? 0.85 : 0);
+      const lit = this.getMaterial(g.kind, g.materialId, g.kind === 'leaf' ? 0.85 : 0, g.cardPuff ?? 0.45);
       lit.wireframe = mode === 'wireframe';
       if (mode === 'lit' || mode === 'wireframe') {
         mesh.material = lit;
