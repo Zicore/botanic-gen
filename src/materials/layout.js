@@ -8,6 +8,8 @@ const MARGIN = 0.015;
 
 export function leafAspect(p) {
   switch (p.kind) {
+    case 'fir':
+      return 1;
     case 'needles': {
       const reach = p.needleLength * Math.sin((p.needleAngle * Math.PI) / 180);
       const shoots = p.sideShoots > 0 ? 0.16 : 0;
@@ -17,6 +19,14 @@ export function leafAspect(p) {
       return 0.5;
     case 'twig': {
       const reach = p.leafScale * Math.sin((p.twigSpread * Math.PI) / 180) * 1.05 + p.leafScale * p.width * 0.35;
+      if (p.twigIrregularity > 0) {
+        // Irregular sprays can have leaves pointing almost sideways. Allow for the
+        // curved stem and the first (longest) lateral with a leaf at its tip.
+        const top = Math.max(0.2, 0.97 - p.leafScale * 0.95);
+        const lateral = p.sideTwigs > 0 ? top * (0.8 - 0.25 / p.sideTwigs) * 0.6 + p.leafScale * 0.6 : 0;
+        const halfWidth = Math.abs(p.twigCurve) * 0.12 + Math.max(lateral, p.leafScale * 1.1);
+        return Math.max(0.35, 2 * halfWidth + 0.04);
+      }
       return Math.min(1, Math.max(0.35, 2 * reach + 0.06));
     }
     case 'clump':

@@ -15,6 +15,21 @@ export const foliageUniforms = {
   uCardPuff: { value: 1.0 },
 };
 
+// The transmission mask is zero on bark in the impostor atlas. Both LOD paths
+// use the shadowed light and the same grazing/back-light response as Godot BACKLIGHT.
+const directCall = 'RE_Direct( directLight, geometryPosition, geometryNormal, geometryViewDir, geometryClearcoatNormal, material, reflectedLight );';
+export const foliageLights = THREE.ShaderChunk.lights_fragment_begin.replaceAll(directCall,
+  `${directCall}
+  {
+    float backWeight = 1.0 - saturate(dot(geometryNormal, directLight.direction));
+    reflectedLight.directDiffuse += directLight.color * backWeight * BRDF_Lambert(botanicaTransmission);
+  }`);
+
+export const transmissionTint = /* glsl */ `
+vec3 transmittedLeafColor(vec3 albedo, vec3 pigment, float mask) {
+  return albedo * mix(vec3(1.0), sqrt(pigment), 0.8) * (1.45 * mask);
+}`;
+
 export const WIND_GLSL = /* glsl */ `
 uniform float uTime;
 uniform float uWindStrength;
@@ -137,15 +152,6 @@ export function createLeafMaterial(maps, params, name = 'Leaves', { noFlip = 0.8
   mat.userData.uniforms = extra;
   mat.onBeforeCompile = (shader) => {
     patchLeafVertex(shader, extra);
-    const lights = THREE.ShaderChunk.lights_fragment_begin.replaceAll(
-      'RE_Direct( directLight, geometryPosition, geometryNormal, geometryViewDir, geometryClearcoatNormal, material, reflectedLight );',
-      `RE_Direct( directLight, geometryPosition, geometryNormal, geometryViewDir, geometryClearcoatNormal, material, reflectedLight );
-      {
-        float scatter = pow(saturate(dot(geometryViewDir, -directLight.direction)), 3.0) * 0.75
-                      + saturate(dot(-geometryNormal, directLight.direction)) * 0.35;
-        reflectedLight.directDiffuse += directLight.color * botanicaTrans * scatter;
-      }`,
-    );
     const normalBegin = THREE.ShaderChunk.normal_fragment_begin.replace(
       'normal *= faceDirection;',
       'normal *= (uNoFlip * uCenterNormals) > 0.5 ? 1.0 : faceDirection;',
@@ -158,17 +164,15 @@ export function createLeafMaterial(maps, params, name = 'Leaves', { noFlip = 0.8
         uniform float uTranslucency;
         uniform vec3 uSubsurface;
         uniform float uNoFlip;
-        uniform float uCenterNormals;`,
+        uniform float uCenterNormals;
+        ${transmissionTint}`,
       )
       .replace(
-        '#include <map_fragment>',
-        `#include <map_fragment>
-        vec3 botanicaTrans = vec3(0.0);
+        '#include <color_fragment>',
+        `#include <color_fragment>
+        vec3 botanicaTransmission = vec3(0.0);
         #ifdef USE_MAP
-          botanicaTrans = uSubsurface * texture2D(uTranslucencyMap, vMapUv).r * uTranslucency * diffuseColor.rgb * 2.2;
-        #endif
-        #ifdef USE_COLOR
-          botanicaTrans *= vColor.r * vColor.r;
+          botanicaTransmission = transmittedLeafColor(diffuseColor.rgb, uSubsurface, texture2D(uTranslucencyMap, vMapUv).r * uTranslucency);
         #endif`,
       )
       .replace(
@@ -183,7 +187,7 @@ export function createLeafMaterial(maps, params, name = 'Leaves', { noFlip = 0.8
         #include <alphatest_fragment>`,
       )
       .replace('#include <normal_fragment_begin>', normalBegin)
-      .replace('#include <lights_fragment_begin>', lights);
+      .replace('#include <lights_fragment_begin>', foliageLights);
   };
   mat.customProgramCacheKey = () => 'botanica-leaf-v3';
 

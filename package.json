@@ -5,6 +5,7 @@
   "description": "Node-based procedural foliage studio: PBR textures, LODs, wind data and Godot 4 export",
   "scripts": {
     "dev": "vite",
+    "prebuild": "node scripts/check-utf8.mjs",
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --project tsconfig.json"

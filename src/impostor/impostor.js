@@ -14,6 +14,7 @@
 
 import * as THREE from 'three';
 import { dataTexture } from '../materials/gpu.js';
+import { foliageLights, transmissionTint } from '../viewer/materials.js';
 
 export const IMPOSTOR_DEFAULTS = { frames: 8, frameSize: 128 };
 
@@ -371,25 +372,17 @@ export function createImpostorMesh(bake, { alphaCutoff = 0.4, subsurface = '#a8c
   mat.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, uniforms);
     shader.vertexShader = patchVertex(shader);
-    const lights = THREE.ShaderChunk.lights_fragment_begin.replaceAll(
-      'RE_Direct( directLight, geometryPosition, geometryNormal, geometryViewDir, geometryClearcoatNormal, material, reflectedLight );',
-      `RE_Direct( directLight, geometryPosition, geometryNormal, geometryViewDir, geometryClearcoatNormal, material, reflectedLight );
-      {
-        float scatter = pow(saturate(dot(geometryViewDir, -directLight.direction)), 3.0) * 0.75
-                      + saturate(dot(-geometryNormal, directLight.direction)) * 0.35;
-        reflectedLight.directDiffuse += directLight.color * uSubsurface * diffuseColor.rgb * impTrans * 2.2 * scatter;
-      }`,
-    );
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', `#include <common>\n${IMPOSTOR_COMMON}\nuniform vec3 uSubsurface;\n${IMPOSTOR_FRAGMENT}`)
-      .replace('#include <map_fragment>', 'vec4 impTexel = impSample();\ndiffuseColor *= impTexel;')
+      .replace('#include <common>', `#include <common>\n${IMPOSTOR_COMMON}\nuniform vec3 uSubsurface;\n${transmissionTint}\n${IMPOSTOR_FRAGMENT}`)
+      .replace('#include <map_fragment>', `diffuseColor *= impSample();
+        vec3 botanicaTransmission = transmittedLeafColor(diffuseColor.rgb, uSubsurface, impTrans);`)
       .replace(
         '#include <normal_fragment_begin>',
         `float faceDirection = gl_FrontFacing ? 1.0 : -1.0;
         vec3 normal = normalize(mat3(viewMatrix) * impNormal);
         vec3 nonPerturbedNormal = normal;`,
       )
-      .replace('#include <lights_fragment_begin>', lights);
+      .replace('#include <lights_fragment_begin>', foliageLights);
   };
   mat.customProgramCacheKey = () => 'botanica-impostor';
 

@@ -31,6 +31,7 @@ export function lodDocument(gdoc, level) {
       // grass blades are seeded per index, so a lower count is already a subset
       if (n.type === 'grass') p.count = Math.max(1, Math.round(p.count * L.keep * 1.5));
       if (n.type === 'fronds') p.widthSegments = 1;
+      if (level === 2 && n.type === 'leaves' && p.lodPolicy === 'detail') return { ...n, params: p, enabled: false };
       const hideWood = L.hideTwigs && isTwigLevel(n, gdoc.nodes);
       return { ...n, params: p, ...(hideWood ? { hideWood } : {}) };
     }),

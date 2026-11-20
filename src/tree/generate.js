@@ -246,7 +246,9 @@ function spawnPositions(P, parentLength, refLength, rng) {
     default: {
       for (let g = 0; g < n; g++) {
         let phi;
-        if (P.phyllotaxy === 'alternate') phi = phi0 + g * Math.PI;
+        // B is across the branch, perpendicular to the plane in which it forks.
+        if (P.phyllotaxy === 'lateral') phi = Math.PI / 2 + (g + (phi0 < Math.PI ? 0 : 1)) * Math.PI;
+        else if (P.phyllotaxy === 'alternate') phi = phi0 + g * Math.PI;
         else if (P.phyllotaxy === 'random') phi = rng.range(0, Math.PI * 2);
         else phi = phi0 + g * GOLDEN;
         out.push({ t: tAt(g, n), phi: phi + jitterRot() });
@@ -835,8 +837,9 @@ function meshLeaves(node, parentSpines, b, mat, ctx) {
   let count = 0;
   let seq = 0; // every candidate card, kept or not: seeds stay stable across LOD subsets
   let capped = false;
-  const keep = ctx.keep ?? 1;
-  const grow = ctx.grow ?? 1;
+  const keepAll = P.lodPolicy === 'keep';
+  const keep = keepAll ? 1 : ctx.keep;
+  const grow = keepAll ? 1 : ctx.grow;
 
   const X = new Vector3(), Dv = new Vector3(), Nv = new Vector3(), pos = new Vector3();
   const wp = new Vector3(), wn = new Vector3(), rawWn = new Vector3(), wt = new Vector3();
@@ -848,6 +851,10 @@ function meshLeaves(node, parentSpines, b, mat, ctx) {
     if (P.tipLeaf) positions.push({ t: 1, phi: rng.range(0, Math.PI * 2), tip: true });
     const midAt = parent.sample(clamp(0.5 * (P.start + P.end), 0, 1));
     const clusterCenter = midAt.p.clone().addScaledVector(midAt.T, P.size * scale * 0.25);
+    const relativeLength = parent.length / refLength;
+    let parentScale = 1;
+    if (P.scaleToParent) parentScale = relativeLength;
+    else if (P.countByLength) parentScale = 0.62 + 0.38 * Math.sqrt(relativeLength);
 
     for (const sp of positions) {
       if (count >= ctx.budget) {
@@ -880,7 +887,6 @@ function meshLeaves(node, parentSpines, b, mat, ctx) {
       X.crossVectors(Dv, Nv).normalize();
       Nv.crossVectors(X, Dv).normalize();
 
-      const parentScale = P.countByLength ? clamp(0.62 + 0.38 * Math.sqrt(parent.length / refLength), 0.58, 1.08) : 1;
       const size0 = Math.max(0.001, P.size * sizeCurve(sp.t) * parentScale * r.vary(1, P.sizeVar) * scale);
       const size = size0 * grow;
       pos.copy(at.p).addScaledVector(R, sp.tip ? 0 : at.r).addScaledVector(Dv, P.offset * scale);

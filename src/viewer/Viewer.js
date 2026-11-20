@@ -83,9 +83,9 @@ export class Viewer {
     this.sun.shadow.mapSize.set(4096, 4096);
     this.sun.shadow.bias = -0.0002;
     this.sun.shadow.normalBias = 0.02;
-    this.sun.shadow.radius = 3;
+    this.sun.shadow.radius = 8;
     this.scene.add(this.sun, this.sun.target);
-    this.hemi = new THREE.HemisphereLight(0xdfe8f0, 0x5a5a38, 0.2);
+    this.hemi = new THREE.HemisphereLight(0xdce8ff, 0xb7a586, 0.65);
     this.scene.add(this.hemi);
 
     this.ground = this.makeGround();
@@ -162,7 +162,7 @@ export class Viewer {
     const ctx = c.getContext('2d');
     const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
     g.addColorStop(0, 'rgba(0,0,0,0.55)');
-    g.addColorStop(0.5, 'rgba(0,0,0,0.25)');
+    g.addColorStop(0.5, 'rgba(0,0,0,0.14)');
     g.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, 128, 128);
@@ -191,7 +191,7 @@ export class Viewer {
     this.envRT = rt;
     this.scene.environment = rt.texture;
     // the physical sky is HDR and very bright: keep its irradiance in proportion to the sun
-    this.scene.environmentIntensity = 0.16;
+    this.scene.environmentIntensity = 0.24;
     const warm = THREE.MathUtils.clamp(elevationDeg / 40, 0, 1);
     this.sun.color.setRGB(1, 0.78 + 0.18 * warm, 0.6 + 0.3 * warm);
     this.sun.intensity = 1.0 + 1.8 * THREE.MathUtils.clamp(elevationDeg / 25, 0, 1);
@@ -400,11 +400,9 @@ export class Viewer {
       this.bounds = { center: center.toArray(), radius, min, max };
       windUniforms.uTreeHeight.value = Math.max(0.5, max.y);
       this.updateSunPosition();
-      const canopy = result.canopy;
-      const blobR = canopy ? Math.max(canopy.radii[0], canopy.radii[2]) * 2.4 : radius;
-      this.blob.scale.set(blobR, blobR, 1);
-      this.blob.position.x = canopy ? canopy.center[0] : 0;
-      this.blob.position.z = canopy ? canopy.center[2] : 0;
+      // Direct shadows already cover the crown. Anchor contact shading at the stem base.
+      const contactDiameter = radius * 0.45;
+      this.blob.scale.set(contactDiameter, contactDiameter, 1);
       if (reframe || !this.framed) this.frame();
     }
     this.applyMode();

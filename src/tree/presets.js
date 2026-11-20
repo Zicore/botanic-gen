@@ -1,28 +1,8 @@
 // Species presets, expressed as nested generator specs.
 
-import { makeNode, makeMaterial, autoLayout, normalizeDoc } from './document.js';
-
-function build(name, materials, spec) {
-  const nodes = [];
-  // stable ids: generator seeds derive from node ids, so presets must not use random ids
-  const prefix = name.toLowerCase().replace(/[^a-z0-9]+/g, '_');
-  materials.forEach((m, i) => {
-    const id = `${prefix}_mat${i}`;
-    const walkFix = (s) => {
-      for (const k of Object.keys(s.params || {})) if (s.params[k] === m.id) s.params[k] = id;
-      (s.children || []).forEach(walkFix);
-    };
-    walkFix(spec);
-    m.id = id;
-  });
-  const walk = (s, parentId) => {
-    const node = makeNode(s.type, parentId, s.params || {}, { id: s.id ?? `${prefix}_${s.type}${nodes.length}`, name: s.name });
-    nodes.push(node);
-    (s.children || []).forEach((c) => walk(c, node.id));
-  };
-  walk(spec, null);
-  return autoLayout(normalizeDoc({ name, nodes, materials }));
-}
+import { makeMaterial } from './document.js';
+import { build, lowBark, lowCard, lowClump } from './presetUtils.js';
+import { CATACLYSM_PRESETS } from './cataclysmPresets.js';
 
 // ---------------------------------------------------------------------------
 
@@ -418,17 +398,6 @@ function grass() {
 // normals so the crown still shades like a volume. 512px bark keeps many species cheap.
 // Wood marked 3-sided and terminal is dropped at the far LOD (see export/lod.js).
 
-const lowCard = (material, params) => ({
-  start: 0.2, end: 1, phyllotaxy: 'spiral', rotationJitter: 40, sizeVar: 0.25, angle: 45, angleVar: 15, faceUp: 0.55,
-  roll: 40, droop: 0.05, fold: 0.15, curl: 0.12, widthSegments: 1, lengthSegments: 1, normalBlend: 0.8, material, ...params,
-});
-
-const lowBark = (name, params) => makeMaterial('bark', name, { resolution: 512, ...params });
-const lowClump = (name, params) => makeMaterial('leaf', name, {
-  kind: 'clump', clumpLeaves: 120, clumpLeafSize: 0.11, clumpWidth: 0.9, twigWidth: 0.3,
-  colorVariation: 0.4, dryness: 0.06, translucency: 0.55, ...params,
-});
-
 function cityLinden() {
   const bark = lowBark('Linden Bark', {
     style: 'furrowed', seed: 31, scale: 14, stretch: 5, depth: 0.55, crackWidth: 0.3, warp: 0.5, detail: 0.6, moss: 0.08,
@@ -592,46 +561,67 @@ function cityOak() {
   });
 }
 
-function cityConifer() {
+function nordmannFir() {
   const bark = lowBark('Fir Bark', {
-    style: 'plated', seed: 21, scale: 9, stretch: 1.4, depth: 0.5, crackWidth: 0.22, warp: 0.5, detail: 0.6, moss: 0.1,
-    colorTop: '#5c4a3e', colorCrack: '#241914', colorVar: '#6e5a4c', tileSize: 0.6, tileAspect: 1.3,
+    style: 'plated', seed: 21, scale: 9, stretch: 2, depth: 0.44, crackWidth: 0.2, warp: 0.45, detail: 0.52, moss: 0.08,
+    colorTop: '#6a675b', colorCrack: '#352e24', colorVar: '#807a6c', tileSize: 0.6, tileAspect: 1.4,
   });
-  const needles = makeMaterial('leaf', 'Fir Needles', {
-    kind: 'needles', needleDensity: 1, needleLength: 0.34, needleAngle: 68, needleCurve: 0.2, needleWidth: 0.75, sideShoots: 6,
-    colorBase: '#1c3b20', colorTip: '#31583a', colorVein: '#4f3d2c', colorSubsurface: '#5f8a3a', colorVariation: 0.25,
-    dryness: 0.04, roughness: 0.7, translucency: 0.35, alphaCutoff: 0.4, resolution: 512,
+  const needles = makeMaterial('leaf', 'Nordmann Fir Bough', {
+    kind: 'fir', tintShootTips: true, needleDensity: 0.72, needleLength: 0.135, needleAngle: 69, needleCurve: 0.2, needleWidth: 0.72, sideShoots: 8,
+    colorBase: '#244632', colorTip: '#749462', colorVein: '#4b5139', colorSubsurface: '#829367', colorVariation: 0.42,
+    dryness: 0.015, roughness: 0.56, translucency: 0.36, alphaCutoff: 0.36, variants: 1, resolution: 512,
   });
-  return build('City Conifer', [bark, needles], {
+  // Size follows height on the trunk: the lowest tier clears the ground and the last tier meets the leader.
+  const crownProfile = [[0, 0.79], [0.15, 1], [0.39, 0.93], [0.68, 0.57], [0.88, 0.245], [1, 0.025]];
+  const bough = (params) => lowCard(needles.id, {
+    countByLength: false, tipLeaf: false, sizeCurve: crownProfile, sizeVar: 0.09, widthScale: 1.1,
+    angle: 99, angleVar: 9, faceUp: 1, roll: 23, fold: -0.26, curl: -0.38, twist: 0.15, droop: 0.05,
+    lengthSegments: 2, widthSegments: 2, flutter: 0.22, cardPuff: 0.13, normalBlend: 0.63, ...params,
+  });
+  return build('Nordmann Fir', [bark, needles], {
     type: 'tree', id: 'tree', params: { seed: 2505 },
     children: [{
-      type: 'trunk', name: 'Trunk',
+      type: 'trunk', name: 'Central leader',
       params: {
-        length: 13, radius: 0.24, radiusCurve: [[0, 1], [0.15, 0.8], [1, 0.05]], tilt: 1, gnarl: 0.06, gnarlScale: 0.2,
-        flare: 0.45, flareHeight: 0.7, flareLobes: 0, ripple: 0.03, sink: 0.15, lengthSegments: 10, radialSegments: 6, material: bark.id,
+        length: 13, lengthVar: 0.04, radius: 0.22, radiusCurve: [[0, 1], [0.18, 0.83], [0.74, 0.34], [1, 0.02]],
+        tilt: 0.6, gnarl: 0.035, gnarlScale: 0.2, flare: 0.35, flareHeight: 0.6, flareLobes: 0, ripple: 0.02,
+        sink: 0.12, lengthSegments: 9, radialSegments: 6, material: bark.id,
       },
       children: [{
-        type: 'branches', name: 'Whorls',
+        type: 'branches', name: 'Whorled boughs',
         params: {
-          count: 60, countByLength: false, start: 0.12, end: 0.96, phyllotaxy: 'whorled', whorlSize: 5, rotationJitter: 18,
-          positionJitter: 0.3, length: 0.24, lengthCurve: [[0, 1], [0.5, 0.55], [1, 0.08]], lengthVar: 0.15,
-          radiusRatio: 0.22, radiusCurve: [[0, 1], [1, 0.15]], angle: 82, angleCurve: [[0, 1.12], [0.7, 0.92], [1, 0.62]],
-          gravity: 0.4, gravityCurve: [[0, 0.1], [0.6, 0.6], [1, 1]], upAttraction: 0.25, flatten: 0.1, gnarl: 0.15, gnarlScale: 0.8,
-          collar: 0.3, lengthSegments: 2, radialSegments: 3, flex: 0.45,
+          count: 40, countByLength: false, start: 0.12, end: 0.995, phyllotaxy: 'whorled', whorlSize: 4, rotationJitter: 15,
+          positionJitter: 0.33, length: 0.285, lengthCurve: crownProfile, lengthVar: 0.1,
+          angle: 108, angleCurve: [[0, 1], [0.45, 0.88], [0.85, 0.75], [1, 0.53]], angleVar: 6,
+          gravity: 0.28, gravityCurve: [[0, 1], [1, 0]], upAttraction: 0.30, radiusRatio: 0.28, radiusCurve: [[0, 1], [0.55, 0.58], [1, 0.12]],
+          gnarl: 0.06, flex: 0.45, lengthSegments: 2, radialSegments: 3,
         },
         children: [{
-          type: 'leaves', name: 'Needle cards',
-          params: lowCard(needles.id, {
-            count: 5, countByLength: true, start: 0.05, phyllotaxy: 'alternate', size: 1.7, sizeCurve: [[0, 1], [1, 0.7]], angle: 30, faceUp: 0.6, roll: 45,
-            droop: 0.15, fold: 0.3, normalBlend: 0.6,
-          }),
+          type: 'leaves', name: 'Main needle fans',
+          params: bough({ count: 1, start: 0, end: 0.015, size: 4.22, sizeVar: 0.035, sizeCurve: [[0, 1], [1, 1]], scaleToParent: true,
+            widthScale: 1.18, angle: 1, angleVar: 1, roll: 22, droop: 0, curl: -0.16, widthSegments: 1, lodPolicy: 'keep' }),
+        }, {
+          type: 'leaves', name: 'Forked sprays',
+          params: lowCard(needles.id, { count: 4, tipLeaf: false, start: 0.16, end: 0.95, phyllotaxy: 'lateral', rotationJitter: 27,
+            size: 2.02, scaleToParent: true, sizeVar: 0.18, sizeCurve: [[0, 1], [0.7, 0.83], [1, 0.56]], widthScale: 1.08, angle: 54, angleVar: 10,
+            faceUp: 0.9, roll: 28, fold: -0.12, droop: 0.03, curl: -0.23, cardPuff: 0.12, normalBlend: 0.58,
+            flutter: 0.25, lodPolicy: 'detail' }),
         }],
       }, {
-        type: 'leaves', name: 'Leader cards',
-        params: lowCard(needles.id, { count: 6, start: 0.86, size: 1.4, angle: 20, faceUp: 0.2, normalBlend: 0.6 }),
+        type: 'leaves', name: 'Short interwhorl boughs',
+        params: bough({ count: 72, start: 0.155, end: 0.99, phyllotaxy: 'spiral', rotationJitter: 13,
+          size: 3.8, sizeVar: 0.14, widthScale: 1.26, angle: 105, angleVar: 12, roll: 33, curl: -0.35, fold: 0, lengthSegments: 1, widthSegments: 1, lodPolicy: 'detail' }),
+      }, {
+        type: 'leaves', name: 'Rising inner shoots',
+        params: bough({ count: 64, start: 0.11, end: 0.98, size: 3.0, angle: 43, angleVar: 10, roll: 32,
+          faceUp: 0.7, widthScale: 1.15, fold: 0, droop: 0, curl: 0.18, lengthSegments: 1, widthSegments: 1 }),
+      }, {
+        type: 'leaves', name: 'Upright shoots',
+        params: bough({ count: 28, start: 0.83, end: 1, tipLeaf: true, size: 0.98, sizeCurve: [[0.83, 1], [0.95, 0.64], [1, 0.28]],
+          angle: 58, droop: 0, roll: 22, widthScale: 0.83, lengthSegments: 1, widthSegments: 1 }),
       }],
     }],
-  });
+  }, 'City Conifer'); // Keep the original node IDs and seeded geometry.
 }
 
 function cityPine() {
@@ -852,6 +842,158 @@ function cityShrub() {
   });
 }
 
+// Forest templates: for woods of many thousand instanced trees that are also seen from close by
+// (a camera walking among them). Same budget idea as the city trees, but the foliage is spread
+// over more, smaller cards that are bent (two length segments, curl and fold), so a crown seen
+// from below or from the side shows depth. The fir carries a fan of needle shoots on each bough card.
+
+function forestOak() {
+  const bark = lowBark('Oak Bark', {
+    style: 'furrowed', seed: 4, scale: 16, stretch: 6, depth: 0.85, crackWidth: 0.4, warp: 0.6, detail: 0.7, moss: 0.12,
+    colorTop: '#5b5346', colorCrack: '#18120d', colorVar: '#766f63', colorMoss: '#4a5c28', tileSize: 0.85, tileAspect: 1.6, normalStrength: 2,
+  });
+  const leaf = lowClump('Oak Foliage', {
+    shape: 'obovate', width: 0.58, tip: 0.2, lobes: 5, lobeDepth: 0.45, serration: 0, petiole: 0.06, veins: 6, veinAngle: 48,
+    clumpLeaves: 150, clumpLeafSize: 0.1, clumpWidth: 0.95, colorBase: '#2a4d19', colorTip: '#466f25', colorVein: '#7c9c48',
+    colorSubsurface: '#9ec238', colorVariation: 0.45, dryness: 0.1,
+  });
+  const card = (params) => lowCard(leaf.id, { lengthSegments: 1, widthSegments: 2, fold: 0.35, roll: 55, normalBlend: 0.75, cardPuff: 0.5, ...params });
+  return build('Forest Oak', [bark, leaf], {
+    type: 'tree', id: 'tree', params: { seed: 3404 },
+    children: [{
+      type: 'trunk', name: 'Trunk',
+      params: {
+        length: 9.5, radius: 0.42, radiusCurve: [[0, 1], [0.28, 0.76], [0.5, 0.58], [0.8, 0.28], [1, 0.1]], tilt: 4, gnarl: 0.32, gnarlScale: 0.32,
+        flare: 0.7, flareHeight: 1.1, flareLobes: 5, ripple: 0.05, sink: 0.2, lengthSegments: 8, radialSegments: 7, material: bark.id,
+      },
+      children: [{
+        type: 'branches', name: 'Main boughs',
+        params: {
+          count: 9, countByLength: false, start: 0.38, end: 0.9, length: 0.62, lengthCurve: [[0, 0.96], [0.5, 1], [1, 0.62]], lengthVar: 0.18,
+          radiusRatio: 0.6, angle: 64, angleCurve: [[0, 1.15], [0.55, 0.92], [1, 0.55]], angleVar: 9, gravity: 0.28, upAttraction: 0.25, outward: 0.3,
+          gnarl: 0.6, gnarlScale: 0.42, collar: 0.6, lengthSegments: 6, radialSegments: 5, flex: 0.35,
+        },
+        children: [{
+          type: 'branches', name: 'Branches',
+          params: {
+            count: 8, start: 0.16, end: 1, phyllotaxy: 'alternate', rotationJitter: 50, length: 0.44, lengthCurve: [[0, 1], [1, 0.52]],
+            radiusRatio: 0.5, angle: 52, angleVar: 14, gravity: 0.24, upAttraction: 0.26, outward: 0.22, gnarl: 0.6, gnarlScale: 1.0, collar: 0.28,
+            lengthSegments: 3, radialSegments: 3, flex: 0.6,
+          },
+          children: [{ type: 'leaves', name: 'Foliage', params: card({ count: 6, size: 1.45, sizeVar: 0.3 }) }],
+        }, {
+          type: 'leaves', name: 'Inner foliage', params: card({ count: 4, start: 0.3, size: 1.35, tipLeaf: false }),
+        }],
+      }, {
+        type: 'branches', name: 'Crown boughs',
+        params: {
+          count: 5, countByLength: false, start: 0.76, end: 0.99, length: 0.42, lengthCurve: [[0, 1], [1, 0.65]],
+          radiusRatio: 0.5, angle: 36, angleVar: 10, gravity: 0.16, upAttraction: 0.3, outward: 0.18, gnarl: 0.5, gnarlScale: 0.6, collar: 0.5,
+          lengthSegments: 4, radialSegments: 4, flex: 0.45,
+        },
+        children: [{ type: 'leaves', name: 'Upper crown', params: card({ count: 8, start: 0.2, size: 1.4, faceUp: 0.68 }) }],
+      }],
+    }],
+  });
+}
+
+function forestFir() {
+  const bark = lowBark('Silver Fir Bark', {
+    style: 'plated', seed: 21, scale: 12, stretch: 2.6, depth: 0.42, crackWidth: 0.2, warp: 0.42, detail: 0.5, moss: 0.08,
+    colorTop: '#736e63', colorCrack: '#38332e', colorVar: '#867e71', tileSize: 0.7, tileAspect: 1.6,
+  });
+  const needles = makeMaterial('leaf', 'Fir Bough', {
+    kind: 'fir', needleDensity: 0.78, needleLength: 0.17, needleAngle: 68, needleCurve: 0.15, needleWidth: 0.62, sideShoots: 7,
+    colorBase: '#244532', colorTip: '#4c744e', colorVein: '#596648', colorSubsurface: '#77965c', colorVariation: 0.34,
+    dryness: 0.02, roughness: 0.66, translucency: 0.32, alphaCutoff: 0.36, resolution: 512, variants: 2,
+  });
+  const bough = (params) => lowCard(needles.id, {
+    countByLength: false, scaleToParent: true, start: 0, end: 0.035, count: 1, tipLeaf: false,
+    size: 4.5, widthScale: 1.08, sizeVar: 0.08, angle: 3, angleVar: 4, faceUp: 1, roll: 24,
+    fold: -0.68, curl: -0.08, droop: 0.03, twist: 0.2, flutter: 0.16,
+    lengthSegments: 2, widthSegments: 2, cardPuff: 0.12, normalBlend: 0.5, ...params,
+  });
+  const limbs = {
+    countByLength: false, length: 0.27, lengthCurve: [[0, 0.83], [0.21, 1], [0.52, 0.78], [0.8, 0.43], [1, 0.035]],
+    lengthVar: 0.10, radiusRatio: 0.22, radiusCurve: [[0, 1], [1, 0.09]], angle: 91,
+    angleCurve: [[0, 1.14], [0.43, 1.08], [0.8, 1.0], [1, 0.63]], angleVar: 5,
+    gravity: 0.32, gravityCurve: [[0, 1], [0.6, 0.3], [1, 0]], upAttraction: 0.38, outward: 0.12, gnarl: 0.09,
+    collar: 0.25, lengthSegments: 2, radialSegments: 3, flex: 0.4,
+  };
+  return build('Silver Fir', [bark, needles], {
+    type: 'tree', id: 'tree', params: { seed: 4505 },
+    children: [{
+      type: 'trunk', name: 'Central leader',
+      params: {
+        length: 16, radius: 0.26, radiusCurve: [[0, 1], [0.2, 0.81], [0.7, 0.39], [1, 0.024]], tilt: 0.8, gnarl: 0.035,
+        flare: 0.36, flareHeight: 0.7, flareLobes: 0, ripple: 0.02, sink: 0.15, lengthSegments: 9, radialSegments: 6, material: bark.id,
+      },
+      children: [{
+        type: 'branches', name: 'Scaffold whorls',
+        params: { ...limbs, count: 72, start: 0.15, end: 1, phyllotaxy: 'whorled', whorlSize: 4, positionJitter: 0.32, rotationJitter: 13 },
+        children: [{
+          type: 'leaves', name: 'Layered boughs', params: bough({ size: 5.05, lodPolicy: 'keep' }),
+        }, {
+          type: 'leaves', name: 'Outer branchlets',
+          params: bough({ count: 4, countByLength: true, start: 0.12, end: 0.88, phyllotaxy: 'lateral', rotationJitter: 22,
+            size: 2.22, sizeCurve: [[0, 1], [1, 0.64]], angle: 43, angleVar: 8, roll: 32, faceUp: 0.83,
+            widthSegments: 1, lengthSegments: 1, droop: 0.12, lodPolicy: 'detail' }),
+        }],
+      }, {
+        type: 'branches', name: 'Between whorls',
+        params: { ...limbs, count: 17, start: 0.19, end: 0.98, length: 0.19, angle: 77, phyllotaxy: 'spiral', rotationJitter: 27 },
+        children: [{ type: 'leaves', name: 'Short boughs', params: bough({ size: 3.65, roll: 27, lengthSegments: 1 }) }],
+      }, {
+        type: 'leaves', name: 'Leader shoots',
+        params: lowCard(needles.id, { count: 15, start: 0.92, size: 0.47, sizeCurve: [[0, 1], [0.93, 1], [1, 0.46]],
+          angle: 39, angleVar: 10, faceUp: 0.45, roll: 18, droop: 0, flutter: 0.2, cardPuff: 0.12 }),
+      }],
+    }],
+  });
+}
+
+function forestBirch() {
+  const bark = lowBark('Birch Bark', {
+    style: 'birch', seed: 9, scale: 4, stretch: 1.5, depth: 0.45, crackWidth: 0.3, warp: 0.3, detail: 0.4, rings: 0.75, moss: 0.05,
+    colorTop: '#e6e1d6', colorCrack: '#24211f', colorVar: '#bdb6a8', colorMoss: '#6b7a3a', roughness: 0.7, tileSize: 0.7, tileAspect: 1.2,
+  });
+  const shootBark = lowBark('Birch Shoot', {
+    style: 'smooth', seed: 19, scale: 5, stretch: 2, depth: 0.25, crackWidth: 0.2, detail: 0.4, rings: 0.45, moss: 0,
+    colorTop: '#523b2e', colorCrack: '#261a14', colorVar: '#664a3a', roughness: 0.65, tileSize: 0.35,
+  });
+  const leaf = lowClump('Birch Foliage', {
+    shape: 'deltoid', width: 0.7, tip: 0.75, serration: 0.55, teeth: 30, petiole: 0.18, veins: 7, veinAngle: 42,
+    clumpLeaves: 160, clumpLeafSize: 0.085, clumpWidth: 0.85, twigWidth: 0.2,
+    colorBase: '#3f6623', colorTip: '#557f31', colorVein: '#8aab52', colorSubsurface: '#b9d14a', colorVariation: 0.4, translucency: 0.7,
+  });
+  const card = (params) => lowCard(leaf.id, { lengthSegments: 1, widthSegments: 2, fold: 0.3, roll: 50, normalBlend: 0.75, cardPuff: 0.5, ...params });
+  return build('Forest Birch', [bark, shootBark, leaf], {
+    type: 'tree', id: 'tree', params: { seed: 3606 },
+    children: [{
+      type: 'trunk', name: 'Trunk',
+      params: {
+        length: 13, radius: 0.17, radiusCurve: [[0, 1], [0.5, 0.6], [1, 0.08]], tilt: 4, gnarl: 0.18, gnarlScale: 0.25,
+        flare: 0.3, flareHeight: 0.5, flareLobes: 0, ripple: 0.02, sink: 0.12, lengthSegments: 9, radialSegments: 6, material: bark.id,
+      },
+      children: [{
+        type: 'branches', name: 'Branches',
+        params: {
+          count: 22, countByLength: false, start: 0.32, end: 0.96, length: 0.34, lengthCurve: [[0, 0.75], [0.35, 1], [1, 0.32]],
+          radiusRatio: 0.45, angle: 48, angleCurve: [[0, 1.1], [1, 0.7]], gravity: 0.65, gravityCurve: [[0, 0.2], [1, 1]],
+          upAttraction: 0.22, outward: 0.18, gnarl: 0.35, gnarlScale: 0.8, collar: 0.3, lengthSegments: 4, radialSegments: 3, flex: 0.7,
+          material: shootBark.id,
+        },
+        children: [{
+          type: 'leaves', name: 'Hanging foliage',
+          params: card({ count: 12, start: 0.12, size: 1.1, angle: 35, faceUp: 0.35, droop: 0.42 }),
+        }],
+      }, {
+        type: 'leaves', name: 'Crown top', params: card({ count: 8, start: 0.84, size: 0.9, faceUp: 0.45, droop: 0.2 }),
+      }],
+    }],
+  });
+}
+
 export const PRESETS = {
   oak: { label: 'Oak', build: oak },
   birch: { label: 'Birch', build: birch },
@@ -868,9 +1010,15 @@ export const PRESETS = {
   cityPoplar: { label: 'Columnar Poplar', group: 'city', build: cityPoplar },
   cityBirch: { label: 'Birch', group: 'city', build: cityBirch },
   cityCherry: { label: 'Cherry Blossom', group: 'city', build: cityCherry },
-  cityConifer: { label: 'Conifer', group: 'city', build: cityConifer },
+  cityConifer: { label: 'Nordmann Fir', group: 'city', build: nordmannFir },
   cityPine: { label: 'Pine', group: 'city', build: cityPine },
   cityPalm: { label: 'Boulevard Palm', group: 'city', build: cityPalm },
   citySapling: { label: 'Young Tree', group: 'city', build: citySapling },
   cityShrub: { label: 'Round Shrub', group: 'city', build: cityShrub },
+
+  forestOak: { label: 'Oak', group: 'forest', build: forestOak },
+  forestSpruce: { label: 'Silver Fir', group: 'forest', build: forestFir },
+  forestBirch: { label: 'Birch', group: 'forest', build: forestBirch },
+
+  ...CATACLYSM_PRESETS,
 };

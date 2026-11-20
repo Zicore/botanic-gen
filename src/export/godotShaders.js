@@ -29,6 +29,9 @@ vec3 botanica_wind(vec3 p, vec3 n, vec2 w, float t, vec3 origin) {
 }
 `;
 
+// Godot multiplies diffuse lighting (including BACKLIGHT) by ALBEDO.
+const backlightTint = 'mix(vec3(1.0), sqrt(subsurface_color), 0.8) * 1.45';
+
 export const GODOT_FOLIAGE_SHADER = `// Botanica foliage shader (Godot 4)
 // Alpha-tested, double-sided leaves with translucency, baked AO and wind.
 shader_type spatial;
@@ -95,7 +98,7 @@ void fragment() {
 	SPECULAR = specular_amount;
 
 	float t = texture(translucency_texture, UV).r * translucency;
-	BACKLIGHT = subsurface_color * a.rgb * t * 2.2 * COLOR.r * COLOR.r;
+	BACKLIGHT = ${backlightTint} * t;
 }
 `;
 
@@ -245,6 +248,6 @@ void fragment() {
 	ROUGHNESS = roughness;
 	METALLIC = 0.0;
 	SPECULAR = specular_amount;
-	BACKLIGHT = subsurface_color * ALBEDO * (nrm.a / cov) * translucency * 2.2;
+	BACKLIGHT = ${backlightTint} * (nrm.a / cov) * translucency;
 }
 `;

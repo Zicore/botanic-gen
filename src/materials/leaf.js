@@ -12,7 +12,7 @@ import { createBakeProgram, dataTexture, hexToLinear } from './gpu.js';
 import { leafLayout, leafAspect } from './layout.js';
 
 // clumps share the twig shading path (per-leaf tint gradient)
-const KINDS = { broadleaf: 0, needles: 1, frond: 2, blade: 3, twig: 4, clump: 4 };
+const KINDS = { broadleaf: 0, needles: 1, fir: 1, frond: 2, blade: 3, twig: 4, clump: 4 };
 
 // ---------------------------------------------------------------------------
 // Stage 1: vector layers
@@ -240,19 +240,26 @@ function drawTwig(layers, map, p, aspect, rng) {
 
   const leaves = [];
   const n = Math.max(1, p.twigLeaves);
+  const variation = p.twigIrregularity ?? 0;
+  const pattern = rng.fork(413);
+  const phase = pattern.range(0, Math.PI * 2);
+  const frequency = 2 * Math.PI * (2 + pattern.int(2));
   for (let i = 0; i < n - 1; i++) {
-    const t = 0.1 + 0.9 * ((i + 0.5) / (n - 1)) ** 0.85;
+    const u = (i + 0.5) / (n - 1);
+    // This warp gathers leaves into groups while preserving their order and both ends of the shoot.
+    const offset = (Math.sin(phase + u * frequency) - Math.sin(phase)) / frequency;
+    const t = 0.1 + 0.9 * (u + variation * offset) ** 0.85;
     const side = i % 2 === 0 ? 1 : -1;
     const size = L * (0.62 + 0.38 * Math.sin(Math.PI * Math.min(1, t * 0.9 + 0.12))) * (0.9 + rng.next() * 0.2);
     const [x, y] = stemAt(t);
-    leaves.push({ x, y, size, ang: stemDir(t) + side * (spread + rng.signed() * 0.18), order: t + rng.signed() * 0.15 });
+    leaves.push({ x, y, size, ang: stemDir(t) + side * (spread + rng.signed() * (0.18 + 0.32 * variation)), order: t + rng.signed() * 0.15 });
   }
   for (let k = 0; k < p.sideTwigs; k++) {
     const t = 0.2 + (0.5 * (k + 0.5)) / p.sideTwigs;
     const side = k % 2 === 0 ? -1 : 1;
     const [ox, oy] = stemAt(t);
     const a = stemDir(t) + side * (0.7 + rng.signed() * 0.15);
-    const len = top * (1 - t) * 0.6;
+    const len = top * (1 - t) * 0.6 * (1 - variation * pattern.range(0.12, 0.65));
     const ex = ox - Math.sin(a) * len, ey = oy + Math.cos(a) * len;
     woodStroke(layers, [map.P(ox, oy), map.P((ox + ex) / 2, (oy + ey) / 2), map.P(ex, ey)], 0.012 * map.unit, 0.004 * map.unit);
     for (let j = 0; j < 3; j++) {
@@ -352,7 +359,9 @@ function drawNeedleShoot(layers, map, p, rng, origin, dir, length, scale, depth)
     taperedStroke(layers.mask.ctx, pts, w, w * 0.15);
     layers.veins.ctx.fillStyle = 'rgba(255,255,255,0.8)';
     taperedStroke(layers.veins.ctx, pts, w * 0.4, w * 0.05);
-    const g = Math.round(60 + rng.next() * 140);
+    const tint = rng.next();
+    // The shaded base and fresh tips repeat on each shoot within a fir bough.
+    const g = Math.round(p.tintShootTips ? 18 + 185 * t + 48 * tint : 60 + tint * 140);
     layers.tint.ctx.fillStyle = `rgb(${g},${g},${g})`;
     taperedStroke(layers.tint.ctx, pts, w, w * 0.15);
   }
@@ -372,6 +381,33 @@ function drawNeedleShoot(layers, map, p, rng, origin, dir, length, scale, depth)
 /** @param {ReturnType<typeof cellMapper>} map */
 function drawNeedles(layers, map, p, aspect, rng) {
   drawNeedleShoot(layers, map, p, rng, [0, 0.01], [0, 1], 0.97, 1, 0);
+}
+
+/** A whole bough on one card. Each lateral carries several shorter, needle-covered shoots. */
+function drawFirBough(layers, map, p, aspect, rng) {
+  const bend = rng.signed() * 0.045;
+  const stemX = (y) => bend * y * y;
+  const stem = Array.from({ length: 13 }, (_, i) => {
+    const y = 0.01 + 0.94 * i / 12;
+    return map.P(stemX(y), y);
+  });
+  woodStroke(layers, stem, map.unit * (0.012 + 0.012 * p.twigWidth), map.unit * 0.003);
+  const lateralParams = { ...p, sideShoots: 3 };
+  for (let i = 0; i < p.sideShoots; i++) {
+    for (const side of [-1, 1]) {
+      const y = 0.08 + 0.73 * (i + rng.range(0, 0.45)) / p.sideShoots;
+      const length = (0.48 - 0.36 * y) * rng.range(0.88, 1.05);
+      const angle = side * rng.range(0.74, 1.02);
+      const lateral = subMapper(map, stemX(y), y, angle, length);
+      drawNeedleShoot(layers, lateral, lateralParams, rng, [0, 0], [0, 1], 0.96, 1, 0);
+    }
+  }
+  // A continuous line of shorter shoots fills the middle and tapers into the terminal bud.
+  for (let i = 0; i < 4; i++) {
+    const y = 0.08 + 0.21 * i;
+    const shoot = subMapper(map, stemX(y), y, rng.signed() * 0.1, 0.25);
+    drawNeedleShoot(layers, shoot, p, rng, [0, 0], [0, 1], 1, 1, 1);
+  }
 }
 
 /** @param {ReturnType<typeof cellMapper>} map */
@@ -463,7 +499,7 @@ function drawBlades(layers, map, p, aspect, rng) {
   }
 }
 
-const DRAW = { broadleaf: drawBroadleaf, twig: drawTwig, clump: drawClump, needles: drawNeedles, frond: drawFrond, blade: drawBlades };
+const DRAW = { broadleaf: drawBroadleaf, twig: drawTwig, clump: drawClump, needles: drawNeedles, fir: drawFirBough, frond: drawFrond, blade: drawBlades };
 
 /** Separable box blur (3 passes ≈ gaussian) on a single 8-bit channel. */
 function blurChannel(src, size, radius) {
@@ -591,6 +627,7 @@ uniform vec4 uCells[4];
 uniform int uCellCount;
 uniform vec3 uBase, uTip, uVein;
 uniform float uVariation, uRoughness, uNormalStrength, uTranslucency;
+uniform bool uTintShootTips;
 
 float leafY(vec2 uv, out float cellRnd) {
   for (int i = 0; i < 4; i++) {
@@ -644,6 +681,7 @@ vec4 bake(vec2 uv) {
 
   // in clusters the gradient follows per-leaf tint instead of the card axis
   vec3 col = mix(uBase, uTip, smoothstep(0.05, 1.0, uKind == 4 ? 0.35 + 0.3 * tint : ly));
+  if (uKind == 1 && uTintShootTips) col = mix(uBase, uTip, smoothstep(0.24, 1.0, tint) * (0.68 + 0.32 * ly));
   vec3 yellow = col * vec3(1.35, 1.15, 0.55);
   col = mix(col, yellow, clamp(cellRnd * 0.6 + (tint - 0.5), 0.0, 1.0) * uVariation * 0.5);
   col *= 1.0 + (tint - 0.5) * uVariation * 0.35;
@@ -686,6 +724,7 @@ export function bakeLeaf(p) {
     uTip: hexToLinear(p.colorTip),
     uVein: hexToLinear(p.colorVein),
     uVariation: p.colorVariation,
+    uTintShootTips: !!p.tintShootTips,
     uDryness: p.dryness,
     uRoughness: p.roughness,
     uNormalStrength: p.normalStrength,

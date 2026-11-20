@@ -4,6 +4,13 @@ import { useStore, treeSeed } from '../state/store.js';
 import { PRESETS } from '../tree/presets.js';
 import { exportGLB, exportGodotPackage, exportTexturesZip, saveProject, loadProjectFile } from '../export/exporters.js';
 
+const presetGroups = [
+  [undefined, 'Load preset (undoable)'],
+  ['city', 'City builder · low-poly'],
+  ['forest', 'Forest · thousands, close-up'],
+  ['cataclysm', 'Cataclysm'],
+];
+
 function Dropdown({ label, mobileLabel = undefined, icon, children, align = 'left', className = '' }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -64,18 +71,16 @@ export function TopBar() {
 
       <div className="tb-group">
         <Dropdown label="Species" mobileLabel={doc.name || 'Species'} icon={<Trees size={14} />}>
-          <div className="dd-title">Load preset (undoable)</div>
-          <div className="dd-grid">
-            {Object.entries(PRESETS).filter(([, p]) => !p.group).map(([k, p]) => (
-              <button key={k} className="dd-item" onClick={() => loadPreset(k)}>{p.label}</button>
-            ))}
-          </div>
-          <div className="dd-title">City builder · low-poly</div>
-          <div className="dd-grid">
-            {Object.entries(PRESETS).filter(([, p]) => p.group === 'city').map(([k, p]) => (
-              <button key={k} className="dd-item" onClick={() => loadPreset(k)}>{p.label}</button>
-            ))}
-          </div>
+          {presetGroups.map(([group, title]) => (
+            <React.Fragment key={title}>
+              <div className="dd-title">{title}</div>
+              <div className="dd-grid">
+                {Object.entries(PRESETS).filter(([, p]) => p.group === group).map(([key, preset]) => (
+                  <button key={key} className="dd-item" onClick={() => loadPreset(key)}>{preset.label}</button>
+                ))}
+              </div>
+            </React.Fragment>
+          ))}
         </Dropdown>
         <input className="doc-name" value={doc.name} onChange={(e) => renameDocument(e.target.value)} spellCheck={false} />
       </div>

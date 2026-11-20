@@ -59,14 +59,52 @@ are 512 px. At the far LOD, thin terminal branches are dropped entirely; the fol
 | Columnar Poplar | 716 | 402 | 96 |
 | Birch | 720 | 362 | 98 |
 | Cherry Blossom | 1,048 | 620 | 180 |
-| Conifer | 1,282 | 954 | 152 |
+| Nordmann Fir | 1,280 | 826 | 154 |
 | Boulevard Palm | 1,470 | 536 | 316 |
 | Young Tree | 214 | 132 | 34 |
 | Round Shrub | 212 | 100 | 88 |
 
+The Nordmann Fir has a low, layered crown. The comparison shows the previous Conifer preset
+on the left and the Nordmann Fir on the right, both viewed from the same direction.
+
+![City Conifer before and after](public/screenshots/city-conifer.jpg)
+
+### Forest templates
+Three species for woods of many thousand instances that are also seen from close by (Species → *Forest*):
+the foliage is spread over more, smaller cards folded along their middle (or bent, for the needle layers),
+so a crown seen from below or the side shows depth. The silver fir carries fans of short needle shoots
+on tiered boughs. Its main bough cards stay in place through all three mesh LODs.
+
+![Silver fir in the editor viewport](public/screenshots/silver-fir.jpg)
+
+| Template | LOD0 | LOD1 | LOD2 |
+|---|---|---|---|
+| Oak | 3,000 | 1,302 | 394 |
+| Silver Fir | 2,210 | 1,436 | 186 |
+| Birch | 1,348 | 472 | 138 |
+
+### Cataclysm trees
+Species → *Cataclysm* includes nine temperate woodland presets. Eastern White Pine and Tulip
+Poplar reach about 25–27 m with the default seeds. Swamp White Oak has three levels of spreading
+branches, Autumn Red Maple has a dense rust-red crown, and American Elm has an arched, vase-shaped
+canopy. River Birch grows in a cluster of stems. Black Willow has hanging leaf sprays, and Storm
+Snag is standing deadwood with exposed forks.
+
+![Eight Cataclysm tree presets](public/screenshots/cataclysm.jpg)
+
+Black Willow (Fine Crown) adds smaller leaves in uneven groups, curved pendant shoots and a fuller
+upper crown. Its default mesh LODs use 4,160, 1,564 and 456 triangles.
+
+![Original Black Willow and Fine Crown at the same camera angle](public/screenshots/black-willow-variants.jpg)
+
+The default trees use 980–4,160 triangles at LOD0 and 512 px material maps.
+The leafy trees use two draw calls per mesh LOD. The snag uses one.
+
 ### Viewport
-- Physical sky with image-based lighting, shadowed sun, translucency that respects shadows,
-  mip-aware alpha so foliage does not thin out with distance.
+- Sky and ground fill reveal branches in shadow. Both the viewport and the Godot export use the
+  leaf transmission map to tint sunlight on backlit foliage across mesh and impostor LODs.
+  [Compare the lighting on the original Black Willow](public/screenshots/black-willow-lighting.jpg).
+- Mip-aware alpha keeps distant foliage visible.
 - Wind preview (same math as the exported Godot shader) and debug views: albedo, AO, wind weights, wireframe,
   skeleton overlay.
 - **LOD preview**: show LOD0/1/2/3, or *Auto* to switch by camera distance with the exact visibility ranges of

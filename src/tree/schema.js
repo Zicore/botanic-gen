@@ -18,6 +18,7 @@ const col = (key, label, def, extra = {}) => ({ key, label, kind: 'color', defau
 const PHYLLOTAXY = [
   { value: 'spiral', label: 'Spiral (137.5°)' },
   { value: 'alternate', label: 'Alternate' },
+  { value: 'lateral', label: 'Alternate along branch sides' },
   { value: 'opposite', label: 'Opposite' },
   { value: 'whorled', label: 'Whorled' },
   { value: 'random', label: 'Random' },
@@ -202,6 +203,7 @@ export const NODE_TYPES = {
         name: 'Shape',
         params: [
           f('size', 'Size (m)', 0.22, 0.01, 6, 0.005),
+          b('scaleToParent', 'Scale size by parent length', false, { hint: 'Size is measured on the longest parent. Cards on shorter parents shrink in proportion.' }),
           c('sizeCurve', 'Size along parent', 'size', CURVES.flat, 'parent'),
           f('sizeVar', 'Size variation', 0.25, 0, 1),
           f('widthScale', 'Width scale', 1, 0.2, 3, 0.01),
@@ -233,6 +235,11 @@ export const NODE_TYPES = {
         params: [
           i('widthSegments', 'Width segments', 2, 1, 6),
           i('lengthSegments', 'Length segments', 2, 1, 10),
+          e('lodPolicy', 'Cards at lower LODs', 'thin', [
+            { value: 'thin', label: 'Thin and enlarge' },
+            { value: 'keep', label: 'Keep every card' },
+            { value: 'detail', label: 'Omit at LOD2' },
+          ]),
         ],
       },
       {
@@ -402,6 +409,7 @@ export const MATERIAL_TYPES = {
             { value: 'twig', label: 'Leaf cluster (twig)' },
             { value: 'clump', label: 'Foliage clump (low-poly)' },
             { value: 'needles', label: 'Needle spray' },
+            { value: 'fir', label: 'Fir bough' },
             { value: 'frond', label: 'Frond (leaflets)' },
             { value: 'blade', label: 'Grass blade' },
           ]),
@@ -442,6 +450,7 @@ export const MATERIAL_TYPES = {
           f('leafScale', 'Leaf size', 0.34, 0.12, 0.7),
           a('twigSpread', 'Leaf angle', 52, 10, 90),
           f('twigCurve', 'Twig curve', 0.25, -1, 1),
+          f('twigIrregularity', 'Shoot variation', 0, 0, 1, 0.01, { hint: 'Group leaves unevenly along the stem and vary lateral shoot lengths and leaf angles.' }),
           f('twigWidth', 'Twig width', 0.4, 0, 1),
           i('sideTwigs', 'Side twigs', 2, 0, 4),
         ],
@@ -458,7 +467,7 @@ export const MATERIAL_TYPES = {
       },
       {
         name: 'Needles',
-        showIf: { kind: 'needles' },
+        showIf: { kind: ['needles', 'fir'] },
         params: [
           f('needleDensity', 'Density', 0.6, 0.1, 1),
           f('needleLength', 'Needle length', 0.32, 0.05, 0.5),
@@ -467,6 +476,7 @@ export const MATERIAL_TYPES = {
           f('needleWidth', 'Needle width', 0.5, 0.1, 1),
           f('twigWidth', 'Twig width', 0.5, 0, 1),
           i('sideShoots', 'Side shoots', 3, 0, 8),
+          b('tintShootTips', 'Color each shoot tip', false, { hint: 'Apply the base-to-tip color gradient to each needle-bearing shoot in the atlas.' }),
         ],
       },
       {
